@@ -49,7 +49,7 @@ class CPU {
     int cycle_count;
     while (IsRunning()) {
       if (!RunOp(memory, &cycle_count)) {
-        break;
+        debug_ = true;
       }
       if (ime_) {
         if (!ProcessInterrupts(memory)) {

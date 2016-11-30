@@ -212,7 +212,7 @@ class Display {
     window_controller_.reset(new WindowController());
     window_.reset(new Window(width, height, 256, 256));
     window_controller_->AddWindow(window_);
-    tileset_window_.reset(new Window(256, 192, 128, 96));
+    tileset_window_.reset(new Window(256, 384, 128, 192));
     window_controller_->AddWindow(tileset_window_);
 
     clock->RegisterObserver([this](int cycles) {
@@ -231,6 +231,7 @@ class Display {
 
   uint8_t Control() { return control_; }
   void SetControl(uint8_t value) {
+    // TODO: turn off display when bit 7 goes to 0, but only during VBLANK
     control_ = value;
   }
 
@@ -341,7 +342,7 @@ class Display {
     // Draw the tileset out to the second window.
     tileset_window_->SetRenderFunc([this]{
       int tx, ty;
-      for (int t = 0; t < 192; ++t) {
+      for (int t = 0; t < 384; ++t) {
         tx = t % 16;
         ty = t / 16;
         Tile *tile = reinterpret_cast<Tile*>(this->vram_ + (t * 16));

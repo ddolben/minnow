@@ -236,7 +236,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
 
   // Consume the opcode and advance the program counter.
   uint8_t code = memory->Read8(pc_);
-  if (!memory->bootstrap_is_mapped() || debug_) {
+  if (/*!memory->bootstrap_is_mapped() ||*/ debug_) {
     PrintRegisters();
 
     Op op = ops[code];
@@ -251,6 +251,11 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
           pc_ & 0xffff, code & 0xff,
           memory->Read8(pc_ + 1) & 0xff,
           op.debug.c_str());
+    } else if (code == 0xCB) {
+      uint8_t cb_code = memory->Read8(pc_ + 1);
+      Op cb_op = cb_ops[cb_code];
+      DEBUGF("[0x%04x]: 0x%02x 0x%02x     %s",
+          pc_ & 0xffff, code & 0xff, cb_code & 0xff, cb_op.debug.c_str());
     } else {
       DEBUGF("[0x%04x]: 0x%02x          %s",
           pc_ & 0xffff, code & 0xff, op.debug.c_str());
@@ -268,7 +273,6 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
       }
 
       if (std::string("continue").compare(line.substr(0, 8)) == 0) {
-        breakpoint_ = -1;
         debug_ = false;
         break;
       }
@@ -324,7 +328,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     LoadData16(&de_, memory);
     break;
   case 0x12:
-    LoadData8ToMem(de_, memory);
+    memory->Write8(de_, *a_);
     break;
   case 0x13:
     Inc16(&de_);
