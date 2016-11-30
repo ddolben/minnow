@@ -301,7 +301,13 @@ class Display {
   }
 
   void WriteSprite8(uint16_t offset, uint8_t value) {
+    CHECK(0 <= offset && offset <= kSpriteAttributeTableSize);
     sprite_attributes_[offset] = value;
+  }
+
+  uint8_t ReadSprite8(uint16_t offset) {
+    CHECK(0 <= offset && offset <= kSpriteAttributeTableSize);
+    return sprite_attributes_[offset];
   }
 
   void Write16(uint16_t offset, uint16_t value) {

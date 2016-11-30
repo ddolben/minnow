@@ -46,6 +46,8 @@ class Memory {
     if (offset < 0x8000) return cartridge_->Read8(offset);  // ROM
     if (offset < 0xA000) return display_->Read8(offset - 0x8000);  // VRAM
     if (offset < 0xC000) return cartridge_->Read8(offset);  // Cartridge RAM
+    if (0xFE00 <= offset && offset <= 0xFE9F)
+      return display_->ReadSprite8(offset - 0xFE00);
     if ((0xFF00 <= offset && offset < 0xFF80) || offset == 0xFFFF) {
       return ReadFromDevice(offset);
     }
@@ -60,6 +62,9 @@ class Memory {
     if (offset < 0x8000) return cartridge_->Read16(offset);  // ROM
     if (offset < 0xA000) return display_->Read16(offset - 0x8000);  // VRAM
     if (offset < 0xC000) return cartridge_->Read16(offset);  // Cartridge RAM
+    if (0xFE00 <= offset && offset <= 0xFE9F)
+      // TODO: 16-bit
+      return display_->ReadSprite8(offset - 0xFE00);
     if ((0xFF00 <= offset && offset < 0xFF80) || offset == 0xFFFF) {
       FATALF("NOT IMPLEMENTED: Read16 from device (0x%04x)", offset);
     }
@@ -68,7 +73,10 @@ class Memory {
 
   void Write8(uint16_t offset, uint8_t value) {
     if (offset < 0x8000) return cartridge_->Write8(offset, value);  // ROM
-    if (offset < 0xA000) return display_->Write8(offset - 0x8000, value);  // VRAM
+    if (offset < 0xA000) {
+      INFOF("Write to display: (0x%04x) <- 0x%02x", offset, value);
+      return display_->Write8(offset - 0x8000, value);  // VRAM
+    }
     if (offset < 0xC000) return cartridge_->Write8(offset, value);  // Cartridge RAM
     // Sprite Attribute Table
     if (0xFE00 <= offset && offset <= 0xFE9F)
@@ -78,6 +86,7 @@ class Memory {
           offset & 0xffff, value & 0xff);
       return;
     }
+    if (offset == 0xFF46) return StartDMATransfer(value);
     Write(offset, reinterpret_cast<uint8_t*>(&value), 1);
   }
 
@@ -272,6 +281,8 @@ class Memory {
     FATALF("NOT IMPLEMENTED: write to device (0x%04x) <- 0x%04x",
         offset & 0xffff, value & 0xff);
   }
+
+  void StartDMATransfer(uint8_t value);
 
   bool bootstrap_is_mapped_ = true;
   std::unique_ptr<MMapFile> bootstrap_;
