@@ -12,6 +12,6 @@ It has only been tested on the following platforms:
 
 Minnow builds under C++ 11 and depends on the following:
 
-* make
+* GNU make
 * clang++ (or g++, if you dare)
-* [SDL 2.0](https://www.libsdl.org).
+* [SDL 2.0](https://www.libsdl.org)
