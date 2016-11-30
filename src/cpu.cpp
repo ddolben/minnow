@@ -399,6 +399,9 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     *a_ = memory->Read8(hl_);
     hl_ += 1;
     break;
+  case 0x2c:
+    Inc8(l_);
+    break;
   case 0x2e:
     LoadData8(l_, memory);
     break;
@@ -417,6 +420,13 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     {
       uint8_t value = memory->Read8(hl_);
       Inc8(&value);
+      Write8(hl_, value, memory);
+    }
+    break;
+  case 0x35:
+    {
+      uint8_t value = memory->Read8(hl_);
+      Dec8(&value);
       Write8(hl_, value, memory);
     }
     break;
