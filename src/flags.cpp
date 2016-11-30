@@ -34,7 +34,7 @@ void ParseFlags(int *argc, char **argv[]) {
 
     if (string_flags.find(name) != string_flags.end()) {
       string_flags[name]->set_value(value);
-      INFOF("  FLAG %s = %s", name.c_str(), value.c_str());
+      INFOF("  %s = %s", name.c_str(), value.c_str());
       continue;
     }
     FATALF("Unrecognized flag: %s = %s", name.c_str(), value.c_str());

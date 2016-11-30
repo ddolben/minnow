@@ -260,6 +260,11 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
         break;
       }
 
+      if (std::string("continue").compare(line.substr(0, 8)) == 0) {
+        breakpoint_ = -1;
+        debug_ = false;
+        break;
+      }
       if (std::string("print").compare(line.substr(0, 5)) == 0) {
         int addr = stoi(line.substr(6), 0, 16);
         if (addr > 0xfffe) {
@@ -381,8 +386,18 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     memory->Write8(hl_, *a_);
     hl_ -= 1;
     break;
+  case 0x34:
+    {
+      uint8_t value = memory->Read8(hl_);
+      Inc8(&value);
+      memory->Write8(hl_, value);
+    }
+    break;
   case 0x36:
     LoadData8ToMem(hl_, memory);
+    break;
+  case 0x3c:
+    Inc8(a_);
     break;
   case 0x3d:
     Dec8(a_);
@@ -522,6 +537,10 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     break;
   case 0xd5:
     Push(de_, memory);
+    break;
+  case 0xd9:
+    Return(true, memory);
+    ime_ = true;  // Re-enable interrupts.
     break;
   case 0xe0:
     {
