@@ -71,6 +71,8 @@ class CPU {
   void set_pc(uint16_t value) { pc_ = value; }
   uint8_t pc() { return pc_; }
 
+  void set_breakpoint(uint16_t value) { breakpoint_ = value; }
+
  private:
   enum FlagsMask {
     ZERO_FLAG = 0x80,
@@ -90,7 +92,6 @@ class CPU {
   bool is_running_ = true;
   bool debug_ = false;
   int64_t breakpoint_ = -1;
-  //int64_t breakpoint_ = 0x339;
 
   // Op helpers.
   uint8_t LoadData8(uint8_t *dest, Memory *memory);

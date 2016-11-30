@@ -254,6 +254,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     // TODO: formalize this as a debugger
     std::string line;
     while (true) {
+      printf("debug> ");
       getline(std::cin, line);
       if (line.length() == 0) {
         break;

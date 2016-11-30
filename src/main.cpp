@@ -31,6 +31,7 @@ void PrintHelpAndExit(char *arg0) {
 }
 
 Flag<std::string> FLAG_bootloader("bootloader", "");
+Flag<std::string> FLAG_breakpoint("breakpoint", "");
 
 void ProcessArgs(int *argc, char **argv[]) {
   ParseFlags(argc, argv);
@@ -57,6 +58,11 @@ int main(int argc, char *argv[]) {
 
   cpu.set_pc(0x100);
   memory.set_bootstrap_is_mapped(false);
+
+  if (!(*FLAG_breakpoint).empty()) {
+    // NOTE: the breakpoint is interpreted as a hex string
+    cpu.set_breakpoint(std::stoi(*FLAG_breakpoint, 0, 16));
+  }
 
   cartridge->PrintCartridgeDebug();
 
