@@ -77,7 +77,6 @@ class Memory {
   void Write8(uint16_t offset, uint8_t value) {
     if (offset < 0x8000) return cartridge_->Write8(offset, value);  // ROM
     if (offset < 0xA000) {
-      INFOF("Write to display: (0x%04x) <- 0x%02x", offset, value);
       return display_->Write8(offset - 0x8000, value);  // VRAM
     }
     if (offset < 0xC000) return cartridge_->Write8(offset, value);  // Cartridge RAM

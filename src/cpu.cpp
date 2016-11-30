@@ -4,10 +4,26 @@
 #include <functional>
 #include <iostream>
 
+#include "fixes.h"
 #include "logging.h"
 #include "memory.h"
 
 namespace dgb {
+
+inline void CPU::Write8(uint16_t address, uint8_t value, Memory *memory) {
+  // A fix specific for Tetris.
+  // TODO: figure out root cause
+  if (FIX_tetris && address == 0xFF80) return;
+
+  memory->Write8(address, value);
+}
+
+inline void CPU::Write16(uint16_t address, uint16_t value, Memory *memory) {
+  uint8_t *ptr = reinterpret_cast<uint8_t*>(&value);
+  memory->Write8(address, ptr[0]);
+  memory->Write8(address + 1, ptr[1]);
+  //memory->Write16(address, value);
+}
 
 // Loads 8 bits of data.
 inline uint8_t CPU::LoadData8(uint8_t *dest, Memory *memory) {
@@ -21,7 +37,7 @@ inline uint8_t CPU::LoadData8(uint8_t *dest, Memory *memory) {
 inline uint8_t CPU::LoadData8ToMem(uint16_t dest_addr, Memory *memory) {
   uint8_t data = memory->Read8(pc_);
   pc_ += 1;
-  memory->Write8(dest_addr, data);
+  Write8(dest_addr, data, memory);
   return data;
 }
 
@@ -131,7 +147,7 @@ inline void CPU::Xor(uint8_t value) {
 
 // Pushes a 16-bit value onto the stack.
 inline void CPU::Push(uint16_t value, Memory *memory) {
-  memory->Write16(sp_ - 2, value);
+  Write16(sp_ - 2, value, memory);
   sp_ -= 2;
 }
 
@@ -192,7 +208,7 @@ bool CPU::ProcessInterrupts(Memory *memory) {
       pc_ = kInterruptHandlers[i];
       ime_ = false;
       // Zero out the IR bit for the interrupt we're handling.
-      memory->Write8(0xFFFF, interrupt_request & (~(1 << i)));
+      Write8(0xFFFF, interrupt_request & (~(1 << i)), memory);
       // Break out of this loop and allow the CPU to execute the interrupt
       // handler. Since we've seroed out the IR bit for the interrupt we're
       // executing, as soon as RETI gets called, ProcessInterrupts will run
@@ -328,7 +344,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     LoadData16(&de_, memory);
     break;
   case 0x12:
-    memory->Write8(de_, *a_);
+    Write8(de_, *a_, memory);
     break;
   case 0x13:
     Inc16(&de_);
@@ -367,7 +383,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     LoadData16(&hl_, memory);
     break;
   case 0x22:
-    memory->Write8(hl_, *a_);
+    Write8(hl_, *a_, memory);
     hl_ += 1;
     break;
   case 0x23:
@@ -394,14 +410,14 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     LoadData16(&sp_, memory);
     break;
   case 0x32:
-    memory->Write8(hl_, *a_);
+    Write8(hl_, *a_, memory);
     hl_ -= 1;
     break;
   case 0x34:
     {
       uint8_t value = memory->Read8(hl_);
       Inc8(&value);
-      memory->Write8(hl_, value);
+      Write8(hl_, value, memory);
     }
     break;
   case 0x36:
@@ -438,7 +454,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     LoadReg8(h_, *a_);
     break;
   case 0x77:
-    memory->Write8(hl_, *a_);
+    Write8(hl_, *a_, memory);
     break;
   case 0x78:
     LoadReg8(a_, *b_);
@@ -538,7 +554,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     {
       uint16_t addr = memory->Read16(pc_);
       pc_ += 2;
-      memory->Write16(sp_ - 2, pc_);
+      Write16(sp_ - 2, pc_, memory);
       sp_ -= 2;
       pc_ = addr;
     }
@@ -557,7 +573,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     {
       uint8_t addr = memory->Read8(pc_);
       pc_ += 1;
-      memory->Write8(0xff00 + addr, *a_);
+      Write8(0xff00 + addr, *a_, memory);
     }
     break;
   case 0xe1:
@@ -565,7 +581,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     break;
   case 0xe2:
     {
-      memory->Write8(0xff00 + (*c_), *a_);
+      Write8(0xff00 + (*c_), *a_, memory);
     }
     break;
   case 0xe5:
@@ -585,7 +601,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     {
       uint16_t addr = memory->Read16(pc_);
       pc_ += 2;
-      memory->Write8(addr, *a_);
+      Write8(addr, *a_, memory);
     }
     break;
   case 0xef:

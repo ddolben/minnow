@@ -9,6 +9,7 @@
 #include "clock.h"
 #include "cpu.h"
 #include "display.h"
+#include "fixes.h"
 #include "flags.h"
 #include "logging.h"
 #include "memory.h"
@@ -55,6 +56,9 @@ int main(int argc, char *argv[]) {
   std::shared_ptr<Input> input(new Input());
   Memory memory(*FLAG_bootloader, cartridge, display, input);
   CPU cpu(clock);;
+
+  if (cartridge->Title().compare("TETRIS") == 0)
+    dgb::FIX_tetris = true;
 
   cpu.set_pc(0x100);
   memory.set_bootstrap_is_mapped(false);

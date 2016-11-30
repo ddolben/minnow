@@ -124,9 +124,16 @@ void Cartridge::Write16(uint16_t offset, uint16_t value) {
       offset & 0xffff, value & 0xffff);
 }
 
-void Cartridge::PrintCartridgeDebug() {
+std::string Cartridge::Title() {
   char *title = reinterpret_cast<char*>(rom_->memory()) + 0x134;
-  INFOF("Cartridge: %-16s", title);
+  char buf[17];
+  std::strncpy(buf, title, 16);
+  return std::string(buf);
+}
+
+void Cartridge::PrintCartridgeDebug() {
+  std::string title = Title();
+  INFOF("Cartridge: %s", title.c_str());
 
   uint8_t type_byte = Read8(kCartridgeTypeAddress);
   auto type = kCartridgeTypes.find(type_byte);

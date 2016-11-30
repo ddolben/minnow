@@ -245,7 +245,6 @@ class Display {
   uint8_t Control() { return control_; }
   void SetControl(uint8_t value) {
     // TODO: turn off display when bit 7 goes to 0, but only during VBLANK
-    INFOF("Write to LCD Control: 0x%02x", value);
     control_ = value;
   }
 

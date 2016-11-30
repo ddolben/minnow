@@ -17,6 +17,9 @@ class CPU {
  public:
   CPU(std::shared_ptr<Clock> clock) : clock_(clock) {}
 
+  void Write8(uint16_t address, uint8_t value, Memory *memory);
+  void Write16(uint16_t address, uint16_t value, Memory *memory);
+
   bool ProcessInterrupts(Memory *memory);
 
   bool RunOp(Memory *memory, int *cycle_count);

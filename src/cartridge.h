@@ -19,6 +19,7 @@ class Cartridge {
   void Write8(uint16_t offset, uint8_t value);
   void Write16(uint16_t offset, uint16_t value);
 
+  std::string Title();
   void PrintCartridgeDebug();
 
  private:
