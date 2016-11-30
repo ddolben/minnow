@@ -66,7 +66,10 @@ class Memory {
       // TODO: 16-bit
       return display_->ReadSprite8(offset - 0xFE00);
     if ((0xFF00 <= offset && offset < 0xFF80) || offset == 0xFFFF) {
-      FATALF("NOT IMPLEMENTED: Read16 from device (0x%04x)", offset);
+      // TODO: 16-bit???
+      WARNINGF("Reading 16 bits from device address 0x%04x might be buggy",
+          offset);
+      return ReadFromDevice(offset);
     }
     return *reinterpret_cast<uint16_t*>(GetOffset(offset));
   }

@@ -191,6 +191,13 @@ bool CPU::ProcessInterrupts(Memory *memory) {
       Push(pc_, memory);
       pc_ = kInterruptHandlers[i];
       ime_ = false;
+      // Zero out the IR bit for the interrupt we're handling.
+      memory->Write8(0xFFFF, interrupt_request & (~(1 << i)));
+      // Break out of this loop and allow the CPU to execute the interrupt
+      // handler. Since we've seroed out the IR bit for the interrupt we're
+      // executing, as soon as RETI gets called, ProcessInterrupts will run
+      // again and process interrupts of lower priority, if any.
+      break;
     }
   }
   return true;
@@ -267,7 +274,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
       }
       if (std::string("print").compare(line.substr(0, 5)) == 0) {
         int addr = stoi(line.substr(6), 0, 16);
-        if (addr > 0xfffe) {
+        if (addr > 0xffff) {
           WARNINGF("Cannot read memory at address 0x%x", addr);
         } else {
           uint16_t val = memory->Read16(addr);
