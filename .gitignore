@@ -3,3 +3,4 @@ dgb
 *.gb
 obj/
 *.swp
+*.bin
