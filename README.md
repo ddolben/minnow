@@ -15,3 +15,15 @@ Minnow builds under C++ 11 and depends on the following:
 * GNU make
 * clang++ (or g++, if you dare)
 * [SDL 2.0](https://www.libsdl.org)
+
+# References
+
+* http://gigi.nullneuron.net/gigilabs/sdl2-pixel-drawing/
+* https://cturt.github.io/cinoop.html
+* [RealBoy blog series](https://realboyemulator.wordpress.com/2013/01/03/a-look-at-the-game-boy-bootstrap-let-the-fun-begin/)
+* [Opcode Cheat Sheet](http://pastraiser.com/cpu/gameboy/gameboy_opcodes.html)
+* http://www.devrs.com/gb/files/opcodes.html
+* [GameBoy Dev Book](http://bgb.bircd.org/pandocs.htm)
+* [GameBoy CPU Timing](http://hitmen.c02.at/files/releases/gbc/gbc_cpu_timing.txt)
+* [GameBoy CPU Manual](http://marc.rawer.de/Gameboy/Docs/GBCPUman.pdf)
+  + NOTE: this manual has some errors (e.g. its description of the carry flags is wrong)
