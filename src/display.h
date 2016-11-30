@@ -201,6 +201,19 @@ struct Tile {
 // Class representing the display device.
 class Display {
  public:
+  // Bit 7 - LCD Display Enable             (0=Off, 1=On)
+  // Bit 6 - Window Tile Map Display Select (0=9800-9BFF, 1=9C00-9FFF)
+  // Bit 5 - Window Display Enable          (0=Off, 1=On)
+  // Bit 4 - BG & Window Tile Data Select   (0=8800-97FF, 1=8000-8FFF)
+  // Bit 3 - BG Tile Map Display Select     (0=9800-9BFF, 1=9C00-9FFF)
+  // Bit 2 - OBJ (Sprite) Size              (0=8x8, 1=8x16)
+  // Bit 1 - OBJ (Sprite) Display Enable    (0=Off, 1=On)
+  // Bit 0 - BG Display (for CGB see below) (0=Off, 1=On)
+  enum ControlMask {
+    TILE_DATA_SELECT_BIT = 0x10,
+    BG_TILE_MAP_SELECT_BIT = 0x08
+  };
+
   const static uint16_t kVRAMSize = 8192;
   const static uint16_t kSpriteAttributeTableSize = 0xA0;
   const static int kCycleLength = 70224;
@@ -232,6 +245,7 @@ class Display {
   uint8_t Control() { return control_; }
   void SetControl(uint8_t value) {
     // TODO: turn off display when bit 7 goes to 0, but only during VBLANK
+    INFOF("Write to LCD Control: 0x%02x", value);
     control_ = value;
   }
 
@@ -279,7 +293,17 @@ class Display {
     // TODO: this mutex lock doesn't actually protect against accessing the
     // tile's memory after this function returns.
     std::lock_guard<std::mutex> lock(mutex_);
-    uint8_t tile_id = tilemap_[y*32 + x];
+    // TODO: BG or Window tilemap?
+    uint8_t tile_id = ((control_ & BG_TILE_MAP_SELECT_BIT) == 0)
+        ? tilemap_[y*32 + x]
+        : tilemap_[y*32 + x + 0x400];
+    if ((control_ & TILE_DATA_SELECT_BIT) == 0) {
+      // In this case, the tile_id is interpreted as a signed value, and 0x9000
+      // is tile_id = 0.
+      int8_t signed_tile_id = reinterpret_cast<int8_t&>(tile_id);
+      return reinterpret_cast<struct Tile*>(
+          vram_ + 0x1000 + (signed_tile_id * 16));
+    }
     return reinterpret_cast<struct Tile*>(vram_ + (tile_id * 16));
   }
 
