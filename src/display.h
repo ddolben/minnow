@@ -8,6 +8,7 @@
 #include <SDL2/SDL.h>
 
 #include "clock.h"
+#include "interrupts.h"
 #include "logging.h"
 
 
@@ -217,11 +218,13 @@ class Display {
   const static uint16_t kVRAMSize = 8192;
   const static uint16_t kSpriteAttributeTableSize = 0xA0;
   const static int kCycleLength = 70224;
-  const static int kLineCount = 144;
+  const static int kVisibleLineCount = 144;
   const static int kLineCycleCount = 456;
+  const static int kVBlankStart = kVisibleLineCount * kLineCycleCount;
   const static int kVBlankCycleCount = 4560;
 
-  Display(int width, int height, std::shared_ptr<Clock> clock) {
+  Display(int width, int height, std::shared_ptr<Clock> clock,
+      std::shared_ptr<Interrupts> interrupts) : interrupts_(interrupts) {
     window_controller_.reset(new WindowController());
     window_.reset(new Window(width, height, 256, 256));
     window_controller_->AddWindow(window_);
@@ -229,13 +232,17 @@ class Display {
     window_controller_->AddWindow(tileset_window_);
 
     clock->RegisterObserver([this](int cycles) {
-      // TODO: implement interrupts
       this->AdvanceClock(cycles);
     });
   }
 
   void AdvanceClock(int cycles) {
     cycle_clock_ = (cycle_clock_ + cycles) % kCycleLength;
+
+    int diff = cycle_clock_ - kVBlankStart;
+    if (diff >= 0 && diff < cycles) {
+      interrupts_->SignalInterrupt(INTERRUPT_VBLANK);
+    }
   }
 
   uint8_t LCDCY() {
@@ -402,6 +409,8 @@ class Display {
 
   // Used to figure out where the display is in its cycle.
   int cycle_clock_ = 0;
+
+  std::shared_ptr<Interrupts> interrupts_;
 
   std::unique_ptr<WindowController> window_controller_;
   std::shared_ptr<Window> window_;

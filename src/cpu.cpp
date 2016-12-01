@@ -10,24 +10,60 @@
 
 namespace dgb {
 
+inline uint8_t CPU::Read8(uint16_t address, Memory *memory) {
+  CHECK(memory != nullptr);
+  switch (address) {
+    case kInterruptRequestAddress:
+      return interrupt_request_;
+    case kInterruptEnableAddress:
+      return interrupt_enable_;
+    default:
+      return memory->Read8(address);
+  }
+}
+
+inline uint16_t CPU::Read16(uint16_t address, Memory *memory) {
+  CHECK(memory != nullptr);
+  uint16_t value;
+  uint8_t *ptr = reinterpret_cast<uint8_t*>(&value);
+  ptr[0] = memory->Read8(address);
+  ptr[1] = memory->Read8(address+1);
+  return value;
+}
+
 inline void CPU::Write8(uint16_t address, uint8_t value, Memory *memory) {
+  CHECK(memory != nullptr);
+
   // A fix specific for Tetris.
   // TODO: figure out root cause
   if (FIX_tetris && address == 0xFF80) return;
 
-  memory->Write8(address, value);
+  //if (address >= 0xFF80 && address < 0xFFFF)
+  //  INFOF("Write to HIGHRAM (0x%04x) <- 0x%02x", address, value);
+
+  switch (address) {
+    case kInterruptRequestAddress:
+      interrupt_request_ = value;
+      break;
+    case kInterruptEnableAddress:
+      interrupt_enable_ = value;
+      break;
+    default:
+      memory->Write8(address, value);
+  }
 }
 
 inline void CPU::Write16(uint16_t address, uint16_t value, Memory *memory) {
+  CHECK(memory != nullptr);
+
   uint8_t *ptr = reinterpret_cast<uint8_t*>(&value);
   memory->Write8(address, ptr[0]);
   memory->Write8(address + 1, ptr[1]);
-  //memory->Write16(address, value);
 }
 
 // Loads 8 bits of data.
 inline uint8_t CPU::LoadData8(uint8_t *dest, Memory *memory) {
-  uint8_t data = memory->Read8(pc_);
+  uint8_t data = Read8(pc_, memory);
   pc_ += 1;
   *dest = data;
   return data;
@@ -35,7 +71,7 @@ inline uint8_t CPU::LoadData8(uint8_t *dest, Memory *memory) {
 
 // Loads 8 bits of data to a memory address.
 inline uint8_t CPU::LoadData8ToMem(uint16_t dest_addr, Memory *memory) {
-  uint8_t data = memory->Read8(pc_);
+  uint8_t data = Read8(pc_, memory);
   pc_ += 1;
   Write8(dest_addr, data, memory);
   return data;
@@ -43,7 +79,7 @@ inline uint8_t CPU::LoadData8ToMem(uint16_t dest_addr, Memory *memory) {
 
 // Loads 16 bits of data.
 inline uint16_t CPU::LoadData16(uint16_t *dest, Memory *memory) {
-  uint16_t data = memory->Read16(pc_);
+  uint16_t data = Read16(pc_, memory);
   pc_ += 2;
   *dest = data;
   return data;
@@ -51,7 +87,7 @@ inline uint16_t CPU::LoadData16(uint16_t *dest, Memory *memory) {
 
 // Loads 8 bits from memory.
 inline void CPU::LoadMem8(uint8_t *dest, uint16_t addr, Memory *memory) {
-  uint8_t data = memory->Read8(addr);
+  uint8_t data = Read8(addr, memory);
   *dest = data;
 }
 
@@ -153,12 +189,12 @@ inline void CPU::Push(uint16_t value, Memory *memory) {
 
 // Pops a 16-bit value off the stack and into the given register.
 inline void CPU::Pop(uint16_t *dest, Memory *memory) {
-  *dest = memory->Read16(sp_);
+  *dest = Read16(sp_, memory);
   sp_ += 2;
 }
 
 inline void CPU::Jump(bool do_jump, Memory *memory) {
-  uint16_t addr = memory->Read16(pc_);
+  uint16_t addr = Read16(pc_, memory);
   pc_ += 2;
   if (do_jump) {
     pc_ = addr;
@@ -167,7 +203,7 @@ inline void CPU::Jump(bool do_jump, Memory *memory) {
 
 inline uint8_t CPU::JumpRelative(bool do_jump, Memory *memory) {
   // Use a signed byte here so we get subtraction too.
-  int8_t jump = static_cast<int8_t>(memory->Read8(pc_));
+  int8_t jump = static_cast<int8_t>(Read8(pc_, memory));
   pc_ += 1;
   if (do_jump) {
     pc_ += jump;
@@ -175,12 +211,10 @@ inline uint8_t CPU::JumpRelative(bool do_jump, Memory *memory) {
   return jump;
 }
 
-inline void CPU::Return(bool do_return, Memory *memory) {
-  uint16_t addr = memory->Read16(sp_);
+inline void CPU::Return(Memory *memory) {
+  uint16_t addr = Read16(sp_, memory);
   sp_ += 2;
-  if (do_return) {
-    pc_ = addr;
-  }
+  pc_ = addr;
 }
 
 // Does a bitwise left rotation, using the carry bit as a 9th bit in the
@@ -198,8 +232,8 @@ inline void CPU::RotateLeftThroughCarry(uint8_t *value) {
 
 bool CPU::ProcessInterrupts(Memory *memory) {
   // TODO: move these registers into the CPU class
-  uint8_t interrupt_enable = memory->Read8(0xFF0F);
-  uint8_t interrupt_request = memory->Read8(0xFFFF);
+  uint8_t interrupt_request = Read8(0xFF0F, memory);
+  uint8_t interrupt_enable = Read8(0xFFFF, memory);
   uint8_t interrupts = interrupt_enable & interrupt_request;
   for (int i = 0; i < 5; ++i) {
     if ((interrupts & (1 << i)) > 0) {
@@ -208,7 +242,7 @@ bool CPU::ProcessInterrupts(Memory *memory) {
       pc_ = kInterruptHandlers[i];
       ime_ = false;
       // Zero out the IR bit for the interrupt we're handling.
-      Write8(0xFFFF, interrupt_request & (~(1 << i)), memory);
+      Write8(0xFF0F, interrupt_request & (~(1 << i)), memory);
       // Break out of this loop and allow the CPU to execute the interrupt
       // handler. Since we've seroed out the IR bit for the interrupt we're
       // executing, as soon as RETI gets called, ProcessInterrupts will run
@@ -251,24 +285,25 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   }
 
   // Consume the opcode and advance the program counter.
-  uint8_t code = memory->Read8(pc_);
+  uint8_t code = Read8(pc_, memory);
   if (/*!memory->bootstrap_is_mapped() ||*/ debug_) {
     PrintRegisters();
+    DEBUGF("Previous PC: 0x%04x", previous_pc_);
 
     Op op = ops[code];
     if (op.length == 3) {
       DEBUGF("[0x%04x]: 0x%02x 0x%02x 0x%02x %s",
           pc_ & 0xffff, code & 0xff,
-          memory->Read8(pc_ + 1) & 0xff,
-          memory->Read8(pc_ + 2) & 0xff,
+          Read8(pc_ + 1, memory) & 0xff,
+          Read8(pc_ + 2, memory) & 0xff,
           op.debug.c_str());
     } else if (op.length == 2) {
       DEBUGF("[0x%04x]: 0x%02x 0x%02x     %s",
           pc_ & 0xffff, code & 0xff,
-          memory->Read8(pc_ + 1) & 0xff,
+          Read8(pc_ + 1, memory) & 0xff,
           op.debug.c_str());
     } else if (code == 0xCB) {
-      uint8_t cb_code = memory->Read8(pc_ + 1);
+      uint8_t cb_code = Read8(pc_ + 1, memory);
       Op cb_op = cb_ops[cb_code];
       DEBUGF("[0x%04x]: 0x%02x 0x%02x     %s",
           pc_ & 0xffff, code & 0xff, cb_code & 0xff, cb_op.debug.c_str());
@@ -285,7 +320,9 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
       printf("debug> ");
       getline(std::cin, line);
       if (line.length() == 0) {
-        break;
+        line = previous_debug_command_;
+      } else {
+        previous_debug_command_ = line;
       }
 
       if (std::string("continue").compare(line.substr(0, 8)) == 0) {
@@ -297,19 +334,22 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
         if (addr > 0xffff) {
           WARNINGF("Cannot read memory at address 0x%x", addr);
         } else {
-          uint16_t val = memory->Read16(addr);
-          printf("[0x%04x]: 0x%02x 0x%02x\n",
-              addr & 0xffff, val & 0xff, val >> 8);
+          uint8_t val = Read8(addr, memory);
+          printf("[0x%04x]: 0x%02x\n", addr & 0xffff, val & 0xff);
         }
       } else if (std::string("break").compare(line.substr(0, 5)) == 0) {
         breakpoint_ = stoi(line.substr(6), 0, 16);
         debug_ = false;
+        break;
+      } else if (std::string("step").compare(line.substr(0, 4)) == 0) {
         break;
       } else if (std::string("quit").compare(line.substr(0, 4)) == 0) {
         exit(0);
       }
     }
   }
+
+  previous_pc_ = pc_;
   pc_++;
 
 
@@ -396,7 +436,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     JumpRelative(((*f_ & ZERO_FLAG) != 0), memory);
     break;
   case 0x2a:
-    *a_ = memory->Read8(hl_);
+    *a_ = Read8(hl_, memory);
     hl_ += 1;
     break;
   case 0x2c:
@@ -418,14 +458,14 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     break;
   case 0x34:
     {
-      uint8_t value = memory->Read8(hl_);
+      uint8_t value = Read8(hl_, memory);
       Inc8(&value);
       Write8(hl_, value, memory);
     }
     break;
   case 0x35:
     {
-      uint8_t value = memory->Read8(hl_);
+      uint8_t value = Read8(hl_, memory);
       Dec8(&value);
       Write8(hl_, value, memory);
     }
@@ -489,7 +529,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     break;
   case 0x86:
     {
-      uint8_t data = memory->Read8(hl_);
+      uint8_t data = Read8(hl_, memory);
       Add8(a_, data);
     }
     break;
@@ -519,7 +559,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     break;
   case 0xbe:
     {
-      uint8_t data = memory->Read8(hl_);
+      uint8_t data = Read8(hl_, memory);
 
       // NOTE: this is a subtraction operation, but we throw away the result.
       *f_ = SUBTRACT_FLAG;  // Set subtraction flag.
@@ -529,14 +569,14 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     }
     break;
   case 0xc0:
-    Return((*f_ & ZERO_FLAG) == 0, memory);
+    if ((*f_ & ZERO_FLAG) == 0) Return(memory);
     break;
   case 0xc1:
     Pop(&bc_, memory);
     break;
   case 0xc3:
     {
-      uint16_t addr = memory->Read16(pc_);
+      uint16_t addr = Read16(pc_, memory);
       pc_ = addr;
     }
     break;
@@ -544,10 +584,10 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     Push(bc_, memory);
     break;
   case 0xc8:
-    Return((*f_ & ZERO_FLAG) > 0, memory);
+    if ((*f_ & ZERO_FLAG) > 0) Return(memory);
     break;
   case 0xc9:
-    Return(true, memory);
+    Return(memory);
     break;
   case 0xca:
     Jump((*f_ & ZERO_FLAG) > 0, memory);
@@ -555,14 +595,14 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0xcb:
     {
       // Consume the code and advance the program counter.
-      uint8_t code = memory->Read8(pc_);
+      uint8_t code = Read8(pc_, memory);
       pc_++;
       return RunPrefix(code, memory);
     }
     break;  // Unreachable.
   case 0xcd:
     {
-      uint16_t addr = memory->Read16(pc_);
+      uint16_t addr = Read16(pc_, memory);
       pc_ += 2;
       Write16(sp_ - 2, pc_, memory);
       sp_ -= 2;
@@ -576,12 +616,12 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     Push(de_, memory);
     break;
   case 0xd9:
-    Return(true, memory);
+    Return(memory);
     ime_ = true;  // Re-enable interrupts.
     break;
   case 0xe0:
     {
-      uint8_t addr = memory->Read8(pc_);
+      uint8_t addr = Read8(pc_, memory);
       pc_ += 1;
       Write8(0xff00 + addr, *a_, memory);
     }
@@ -599,7 +639,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     break;
   case 0xe6:
     {
-      uint8_t value = memory->Read8(pc_);
+      uint8_t value = Read8(pc_, memory);
       pc_ += 1;
       And(value);
     }
@@ -609,7 +649,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     break;
   case 0xea:
     {
-      uint16_t addr = memory->Read16(pc_);
+      uint16_t addr = Read16(pc_, memory);
       pc_ += 2;
       Write8(addr, *a_, memory);
     }
@@ -620,9 +660,9 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     break;
   case 0xf0:
     {
-      uint8_t addr = memory->Read8(pc_);
+      uint8_t addr = Read8(pc_, memory);
       pc_ += 1;
-      *a_ = memory->Read8(0xff00 + addr);
+      *a_ = Read8(0xff00 + addr, memory);
     }
     break;
   case 0xf1:
@@ -636,7 +676,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     break;
   case 0xfa:
     {
-      uint16_t addr = memory->Read16(pc_);
+      uint16_t addr = Read16(pc_, memory);
       pc_ += 2;
       LoadMem8(a_, addr, memory);
     }
@@ -646,7 +686,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     break;
   case 0xfe:
     {
-      uint8_t data = memory->Read8(pc_);
+      uint8_t data = Read8(pc_, memory);
       pc_ += 1;
 
       // NOTE: this is a subtraction operation, but we throw away the result.

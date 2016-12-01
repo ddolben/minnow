@@ -7,16 +7,31 @@
 #include <thread>
 
 #include "clock.h"
+#include "interrupts.h"
 #include "logging.h"
 #include "memory.h"
 
 
 namespace dgb {
 
+const uint16_t kInterruptRequestAddress = 0xFF0F;
+const uint16_t kInterruptEnableAddress = 0xFFFF;
+
+const uint16_t kInterruptHandlers[5] = {
+  0x40, 0x48, 0x50, 0x58, 0x60
+};
+
 class CPU {
  public:
-  CPU(std::shared_ptr<Clock> clock) : clock_(clock) {}
+  CPU(std::shared_ptr<Clock> clock, std::shared_ptr<Interrupts> interrupts)
+      : clock_(clock), interrupts_(interrupts) {
+    interrupts_->RegisterInterruptHandler([this](uint8_t type) {
+      interrupt_request_ |= type;
+    });
+  }
 
+  uint8_t Read8(uint16_t address, Memory *memory);
+  uint16_t Read16(uint16_t address, Memory *memory);
   void Write8(uint16_t address, uint8_t value, Memory *memory);
   void Write16(uint16_t address, uint16_t value, Memory *memory);
 
@@ -84,11 +99,8 @@ class CPU {
     CARRY_FLAG = 0x10
   };
 
-  const uint16_t kInterruptHandlers[5] = {
-    0x40, 0x48, 0x50, 0x58, 0x60
-  };
-
   std::shared_ptr<Clock> clock_;
+  std::shared_ptr<Interrupts> interrupts_;
 
   std::thread thread_;
   std::mutex mutex_;
@@ -116,12 +128,15 @@ class CPU {
   void Pop(uint16_t *dest, Memory *memory);
   void Jump(bool do_jump, Memory *memory);
   uint8_t JumpRelative(bool do_jump, Memory *memory);
-  void Return(bool do_return, Memory *memory);
+  void Return(Memory *memory);
   void RotateLeftThroughCarry(uint8_t *value);
   void Swap (uint8_t *dest, uint8_t value);
   void TestBit(uint8_t value, unsigned int bit_index);
   void SetBit(uint8_t *dest, unsigned int bit_index);
   void ResetBit(uint8_t *dest, unsigned int bit_index);
+
+  uint16_t previous_pc_ = 0;
+  std::string previous_debug_command_;
 
   // Program counter.
   uint16_t pc_ = 0x0;
@@ -150,6 +165,10 @@ class CPU {
   // Interrupt Master Enable flag.
   // TODO: default to false?
   bool ime_ = false;
+
+  // Interrupt registers.
+  uint8_t interrupt_request_ = 0;  // 0xFF0F
+  uint8_t interrupt_enable_ = 0;  // 0xFFFF
 };
 
 }  // namespace dgb

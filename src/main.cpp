@@ -20,6 +20,7 @@ using dgb::Clock;
 using dgb::CPU;
 using dgb::Display;
 using dgb::Input;
+using dgb::Interrupts;
 using dgb::Memory;
 
 struct {
@@ -51,11 +52,12 @@ int main(int argc, char *argv[]) {
   }
 
   std::shared_ptr<Clock> clock(new Clock());
-  std::shared_ptr<Display> display(new Display(512, 512, clock));
+  std::shared_ptr<Interrupts> interrupts(new Interrupts());
+  std::shared_ptr<Display> display(new Display(512, 512, clock, interrupts));
   std::shared_ptr<Cartridge> cartridge(new Cartridge(args.filename));
   std::shared_ptr<Input> input(new Input());
   Memory memory(*FLAG_bootloader, cartridge, display, input);
-  CPU cpu(clock);;
+  CPU cpu(clock, interrupts);
 
   if (cartridge->Title().compare("TETRIS") == 0)
     dgb::FIX_tetris = true;
