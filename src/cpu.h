@@ -112,7 +112,6 @@ class CPU {
   uint8_t LoadData8(uint8_t *dest, Memory *memory);
   uint16_t LoadData16(uint16_t *dest, Memory *memory);
   uint8_t LoadData8ToMem(uint16_t dest_addr, Memory *memory);
-  void LoadMem8(uint8_t *dest, uint16_t addr, Memory *memory);
   void LoadReg8(uint8_t *dest, uint8_t value);
   void Inc8(uint8_t *value);
   void Inc16(uint16_t *value);
@@ -129,7 +128,9 @@ class CPU {
   void Jump(bool do_jump, Memory *memory);
   uint8_t JumpRelative(bool do_jump, Memory *memory);
   void Return(Memory *memory);
+
   void RotateLeftThroughCarry(uint8_t *value);
+  void ShiftLeft(uint8_t *value);
   void Swap (uint8_t *dest, uint8_t value);
   void TestBit(uint8_t value, unsigned int bit_index);
   void SetBit(uint8_t *dest, unsigned int bit_index);

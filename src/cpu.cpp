@@ -46,6 +46,8 @@ inline void CPU::Write8(uint16_t address, uint8_t value, Memory *memory) {
       interrupt_request_ = value;
       break;
     case kInterruptEnableAddress:
+      if ((value & (~(INTERRUPT_VBLANK | INTERRUPT_SERIAL))) != 0)
+        FATALF("Inimplemented interrupt enable: 0x%02x", value);
       interrupt_enable_ = value;
       break;
     default:
@@ -83,12 +85,6 @@ inline uint16_t CPU::LoadData16(uint16_t *dest, Memory *memory) {
   pc_ += 2;
   *dest = data;
   return data;
-}
-
-// Loads 8 bits from memory.
-inline void CPU::LoadMem8(uint8_t *dest, uint16_t addr, Memory *memory) {
-  uint8_t data = Read8(addr, memory);
-  *dest = data;
 }
 
 // Copies 8 bits from one register to another.
@@ -359,6 +355,9 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x01:
     LoadData16(&bc_, memory);
     break;
+  case 0x03:
+    Inc16(&bc_);
+    break;
   case 0x04:
     Inc8(b_);
     break;
@@ -367,6 +366,12 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     break;
   case 0x06:
     LoadData8(b_, memory);
+    break;
+  case 0x09:
+    Add16(&hl_, bc_);
+    break;
+  case 0x0a:
+    *a_ = Read8(bc_, memory);
     break;
   case 0x0b:
     Dec16(&bc_);
@@ -405,7 +410,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     Add16(&hl_, de_);
     break;
   case 0x1a:
-    LoadMem8(a_, de_, memory);
+    *a_ = Read8(de_, memory);
     break;
   case 0x1c:
     Inc8(e_);
@@ -442,6 +447,9 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x2c:
     Inc8(l_);
     break;
+  case 0x2d:
+    Dec8(l_);
+    break;
   case 0x2e:
     LoadData8(l_, memory);
     break;
@@ -473,6 +481,10 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x36:
     LoadData8ToMem(hl_, memory);
     break;
+  case 0x3a:
+    *a_ = Read8(hl_, memory);
+    hl_--;
+    break;
   case 0x3c:
     Inc8(a_);
     break;
@@ -482,26 +494,53 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x3e:
     LoadData8(a_, memory);
     break;
+  case 0x46:
+    *b_ = Read8(hl_, memory);
+    break;
   case 0x47:
     LoadReg8(b_, *a_);
+    break;
+  case 0x4e:
+    *c_ = Read8(hl_, memory);
     break;
   case 0x4f:
     LoadReg8(c_, *a_);
     break;
   case 0x56:
-    LoadMem8(d_, hl_, memory);
+    *d_ = Read8(hl_, memory);
     break;
   case 0x57:
     LoadReg8(d_, *a_);
     break;
+  case 0x5d:
+    LoadReg8(e_, *l_);
+    break;
   case 0x5e:
-    LoadMem8(e_, hl_, memory);
+    *e_ = Read8(hl_, memory);
     break;
   case 0x5f:
     LoadReg8(e_, *a_);
     break;
+  case 0x60:
+    LoadReg8(h_, *b_);
+    break;
   case 0x67:
     LoadReg8(h_, *a_);
+    break;
+  case 0x69:
+    LoadReg8(l_, *c_);
+    break;
+  case 0x6f:
+    LoadReg8(l_, *a_);
+    break;
+  case 0x71:
+    Write8(hl_, *c_, memory);
+    break;
+  case 0x72:
+    Write8(hl_, *d_, memory);
+    break;
+  case 0x73:
+    Write8(hl_, *e_, memory);
     break;
   case 0x77:
     Write8(hl_, *a_, memory);
@@ -525,7 +564,10 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     LoadReg8(a_, *l_);
     break;
   case 0x7e:
-    LoadMem8(a_, hl_, memory);
+    *a_ = Read8(hl_, memory);
+    break;
+  case 0x85:
+    Add8(a_, *l_);
     break;
   case 0x86:
     {
@@ -574,6 +616,9 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0xc1:
     Pop(&bc_, memory);
     break;
+  case 0xc2:
+    Jump((*f_ & ZERO_FLAG) == 0, memory);
+    break;
   case 0xc3:
     {
       uint16_t addr = Read16(pc_, memory);
@@ -582,6 +627,10 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     break;
   case 0xc5:
     Push(bc_, memory);
+    break;
+  case 0xc6:
+    Add8(a_, Read8(pc_, memory));
+    pc_++;
     break;
   case 0xc8:
     if ((*f_ & ZERO_FLAG) > 0) Return(memory);
@@ -595,6 +644,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0xcb:
     {
       // Consume the code and advance the program counter.
+      // TODO: cycle count
       uint8_t code = Read8(pc_, memory);
       pc_++;
       return RunPrefix(code, memory);
@@ -678,7 +728,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     {
       uint16_t addr = Read16(pc_, memory);
       pc_ += 2;
-      LoadMem8(a_, addr, memory);
+      *a_ = Read8(addr, memory);
     }
     break;
   case 0xfb:
@@ -710,6 +760,13 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   return true;
 }
 
+inline void CPU::ShiftLeft(uint8_t *value) {
+  // Shift bit 7 of *value into the carry flag position.
+  *f_ = CARRY_FLAG & (*value >> 3);
+  *value = (*value << 1);
+  if (*value == 0) *f_ |= ZERO_FLAG;
+}
+
 inline void CPU::Swap(uint8_t *dest, uint8_t value) {
   *dest = (value >> 4) | (value << 4);
   *f_ = (*dest == 0) ? ZERO_FLAG : 0;
@@ -736,6 +793,9 @@ bool CPU::RunPrefix(uint8_t code, Memory *memory) {
   switch (code) {
   case 0x11:
     RotateLeftThroughCarry(c_);
+    break;
+  case 0x27:
+    ShiftLeft(a_);
     break;
   case 0x37:
     Swap(a_, *a_);
