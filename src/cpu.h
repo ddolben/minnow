@@ -131,10 +131,11 @@ class CPU {
 
   void RotateLeftThroughCarry(uint8_t *value);
   void ShiftLeft(uint8_t *value);
+  void ShiftRight(uint8_t *value);
   void Swap (uint8_t *dest, uint8_t value);
   void TestBit(uint8_t value, unsigned int bit_index);
   void SetBit(uint8_t *dest, unsigned int bit_index);
-  void ResetBit(uint8_t *dest, unsigned int bit_index);
+  uint8_t ResetBit(uint8_t value, unsigned int bit_index);
 
   uint16_t previous_pc_ = 0;
   std::string previous_debug_command_;

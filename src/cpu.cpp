@@ -437,6 +437,10 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x24:
     Inc8(h_);
     break;
+  case 0x26:
+    LoadReg8(h_, Read8(pc_, memory));
+    pc_++;
+    break;
   case 0x28:
     JumpRelative(((*f_ & ZERO_FLAG) != 0), memory);
     break;
@@ -494,6 +498,9 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x3e:
     LoadData8(a_, memory);
     break;
+  case 0x40:
+    LoadReg8(b_, *b_);
+    break;
   case 0x46:
     *b_ = Read8(hl_, memory);
     break;
@@ -505,6 +512,9 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     break;
   case 0x4f:
     LoadReg8(c_, *a_);
+    break;
+  case 0x54:
+    LoadReg8(d_, *h_);
     break;
   case 0x56:
     *d_ = Read8(hl_, memory);
@@ -524,11 +534,17 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x60:
     LoadReg8(h_, *b_);
     break;
+  case 0x62:
+    LoadReg8(h_, *d_);
+    break;
   case 0x67:
     LoadReg8(h_, *a_);
     break;
   case 0x69:
     LoadReg8(l_, *c_);
+    break;
+  case 0x6b:
+    LoadReg8(l_, *e_);
     break;
   case 0x6f:
     LoadReg8(l_, *a_);
@@ -704,6 +720,10 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
       Write8(addr, *a_, memory);
     }
     break;
+  case 0xee:
+    Xor(Read8(pc_, memory));
+    pc_++;
+    break;
   case 0xef:
     Push(pc_, memory);
     pc_ = 0x28;
@@ -723,6 +743,10 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     break;
   case 0xf5:
     Push(af_, memory);
+    break;
+  case 0xf6:
+    Or(Read8(pc_, memory));
+    pc_++;
     break;
   case 0xfa:
     {
@@ -767,6 +791,13 @@ inline void CPU::ShiftLeft(uint8_t *value) {
   if (*value == 0) *f_ |= ZERO_FLAG;
 }
 
+inline void CPU::ShiftRight(uint8_t *value) {
+  // Shift bit 0 of *value into the carry flag position.
+  *f_ = CARRY_FLAG & (*value << 4);
+  *value = (*value >> 1);
+  if (*value == 0) *f_ |= ZERO_FLAG;
+}
+
 inline void CPU::Swap(uint8_t *dest, uint8_t value) {
   *dest = (value >> 4) | (value << 4);
   *f_ = (*dest == 0) ? ZERO_FLAG : 0;
@@ -785,8 +816,8 @@ inline void CPU::SetBit(uint8_t *dest, unsigned int bit_index) {
   *dest |= (1 << bit_index);
 }
 
-inline void CPU::ResetBit(uint8_t *dest, unsigned int bit_index) {
-  *dest &= (~(1 << bit_index));
+inline uint8_t CPU::ResetBit(uint8_t value, unsigned int bit_index) {
+  return value & (~(1 << bit_index));
 }
 
 bool CPU::RunPrefix(uint8_t code, Memory *memory) {
@@ -797,14 +828,38 @@ bool CPU::RunPrefix(uint8_t code, Memory *memory) {
   case 0x27:
     ShiftLeft(a_);
     break;
+  case 0x33:
+    Swap(e_, *e_);
+    break;
   case 0x37:
     Swap(a_, *a_);
+    break;
+  case 0x3f:
+    ShiftRight(a_);
+    break;
+  case 0x40:
+    TestBit(*b_, 0);
+    break;
+  case 0x50:
+    TestBit(*b_, 2);
+    break;
+  case 0x5f:
+    TestBit(*a_, 3);
     break;
   case 0x7c:
     TestBit(*h_, 7);
     break;
+  case 0x7e:
+    TestBit(Read8(hl_, memory), 7);
+    break;
+  case 0x7f:
+    TestBit(*a_, 7);
+    break;
+  case 0x86:
+    Write8(hl_, ResetBit(Read8(hl_, memory), 0), memory);
+    break;
   case 0x87:
-    ResetBit(a_, 0);
+    *a_ = ResetBit(*a_, 0);
     break;
   default:
     ERRORF("UNIMPLEMENTED CB PREFIX (0x%02x): %s", code,

@@ -227,7 +227,8 @@ class Memory {
       interrupt_flag_ = value;
       return;
     }
-    if (0xff10 <= offset && offset <= 0xff26) {  // Sound control registers.
+    if ((0xff10 <= offset && offset <= 0xff26) ||
+        (0xff30 <= offset && offset <= 0xff3f)) {  // Sound control registers.
       WARNINGF("NOT IMPLEMENTED: write to sound device (0x%04x) <- 0x%04x",
           offset & 0xffff, value & 0xff);
       return;
