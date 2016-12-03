@@ -64,29 +64,39 @@ const std::map<uint8_t, std::string> kRamSizes = {
   {0x02, "8 Kbytes"},
   {0x03, "32 KBytes (4 banks of 8KBytes each)"}
 };
+
+class MBCNone : public MemoryBankController {
+ public:
+  MBCNone(std::shared_ptr<MMapFile> rom) : MemoryBankController(rom) {}
+
+  uint8_t Read8(uint16_t offset) override {
+    return *(reinterpret_cast<uint8_t*>(rom_->memory()) + offset);
+  }
+
+  void Write8(uint16_t offset, uint8_t value) override {
+    // TODO: possibly RAM?
+    WARNINGF("Unimplemented Write to Cartridge: (0x%04x) <- 0x%02x",
+        offset & 0xffff, value & 0xff);
+  }
+};
 }  // namespace
 
 Cartridge::Cartridge(const std::string &filename)
     : rom_(new MMapFile(filename)) {
-  uint8_t type_byte = Read8(kCartridgeTypeAddress);
+  uint8_t type_byte = rom_->Read8(kCartridgeTypeAddress);
   if (type_byte != 0) {
     FATALF("Unsupported cartridge type: 0x%02x", type_byte & 0xff);
   }
+  mbc_.reset(new MBCNone(rom_));
 }
 
 uint8_t Cartridge::Read8(uint16_t offset) {
+  return mbc_->Read8(offset);
+
   if (0x3FFF < offset && offset < 0x8000 && rom_bank_ > 1) {
     FATALF("NOT IMPLEMENTED: rom banking");
   }
   return *(reinterpret_cast<uint8_t*>(rom_->memory()) + offset);
-}
-
-uint16_t Cartridge::Read16(uint16_t offset) {
-  if (0x3FFF < offset && offset < 0x8000 && rom_bank_ > 1) {
-    FATALF("NOT IMPLEMENTED: rom banking");
-  }
-  return *reinterpret_cast<uint16_t*>(
-      reinterpret_cast<uint8_t*>(rom_->memory()) + offset);
 }
 
 void Cartridge::Write8(uint16_t offset, uint8_t value) {
@@ -100,6 +110,9 @@ void Cartridge::Write8(uint16_t offset, uint8_t value) {
   //      offset & 0xffff, value & 0xff);
   //  return;
   //}
+  mbc_->Write8(offset, value);
+  return;
+
   if (0x2000 <= offset && offset <= 0x3FFF) {
     // Lower 5 bits of ROM bank.
     rom_bank_ = value & 0x1f;
@@ -112,16 +125,6 @@ void Cartridge::Write8(uint16_t offset, uint8_t value) {
   }
   FATALF("Unimplemented Write to Cartridge: (0x%04x) <- 0x%02x",
       offset & 0xffff, value & 0xff);
-}
-
-void Cartridge::Write16(uint16_t offset, uint16_t value) {
-  //if (0xA000 <= offset && offset <= 0xBFFF) {
-  //  ERRORF("Unimplemented Write to Cartridge RAM: (0x%04x) <- 0x%04x",
-  //      offset & 0xffff, value & 0xffff);
-  //  return;
-  //}
-  FATALF("Unimplemented Write to Cartridge: (0x%04x) <- 0x%04x",
-      offset & 0xffff, value & 0xffff);
 }
 
 std::string Cartridge::Title() {

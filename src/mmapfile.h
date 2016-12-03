@@ -28,6 +28,11 @@ class MMapFile {
     CHECK(close(fd_) == 0);
   }
 
+  uint8_t Read8(uint64_t offset) {
+    CHECK(offset < size_);
+    return *(reinterpret_cast<uint8_t*>(memory_) + offset);
+  }
+
   void *memory() { return memory_; }
 
  private:

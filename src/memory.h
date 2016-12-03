@@ -58,26 +58,6 @@ class Memory {
     return *GetOffset(offset);
   }
 
-  uint16_t Read16(uint16_t offset) {
-    if (bootstrap_is_mapped_ && offset <= 0xff) {  // Bootstrap code.
-      return *reinterpret_cast<uint16_t*>(
-          reinterpret_cast<uint8_t*>(bootstrap_->memory()) + offset);
-    }
-    if (offset < 0x8000) return cartridge_->Read16(offset);  // ROM
-    if (offset < 0xA000) return display_->Read16(offset - 0x8000);  // VRAM
-    if (offset < 0xC000) return cartridge_->Read16(offset);  // Cartridge RAM
-    if (0xFE00 <= offset && offset <= 0xFE9F)
-      // TODO: 16-bit
-      return display_->ReadSprite8(offset - 0xFE00);
-    if ((0xFF00 <= offset && offset < 0xFF80) || offset == 0xFFFF) {
-      // TODO: 16-bit???
-      WARNINGF("Reading 16 bits from device address 0x%04x might be buggy",
-          offset);
-      return ReadFromDevice(offset);
-    }
-    return *reinterpret_cast<uint16_t*>(GetOffset(offset));
-  }
-
   void Write8(uint16_t offset, uint8_t value) {
     if (offset < 0x8000) return cartridge_->Write8(offset, value);  // ROM
     if (offset < 0xA000) {
@@ -94,18 +74,6 @@ class Memory {
     }
     if (offset == 0xFF46) return StartDMATransfer(value);
     Write(offset, reinterpret_cast<uint8_t*>(&value), 1);
-  }
-
-  void Write16(uint16_t offset, uint16_t value) {
-    if (offset < 0x8000) return cartridge_->Write16(offset, value);  // ROM
-    if (offset < 0xA000) return display_->Write16(offset - 0x8000, value);  // VRAM
-    if (offset < 0xC000) return cartridge_->Write16(offset, value);  // Cartridge RAM
-    if (0xFEA0 <= offset && offset <= 0xFEFF) {
-      WARNINGF("Noop memory write: (0x%04x) <- 0x%02x",
-          offset & 0xffff, value & 0xff);
-      return;
-    }
-    Write(offset, reinterpret_cast<uint8_t*>(&value), 2);
   }
 
   bool bootstrap_is_mapped() { return bootstrap_is_mapped_; }
