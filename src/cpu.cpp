@@ -158,6 +158,14 @@ inline void CPU::Sub8(uint8_t *dest, uint8_t value) {
   *dest -= value;
 }
 
+// NOTE: this is a subtraction operation, but we throw away the result.
+inline void CPU::Cp(uint8_t value) {
+  *f_ = SUBTRACT_FLAG;  // Set subtraction flag.
+  if (*a_ == value) *f_ |= ZERO_FLAG;
+  if ((*a_ & 0xff) < (value & 0xff)) *f_ |= HALF_CARRY_FLAG;
+  if (*a_ < value) *f_ |= CARRY_FLAG;
+}
+
 // Sets the A register to the result of A AND'ed with value.
 inline void CPU::And(uint8_t value) {
   *a_ = *a_ & value;
@@ -213,9 +221,19 @@ inline void CPU::Return(Memory *memory) {
   pc_ = addr;
 }
 
+// Does a bitwise left rotation, putting the old bit 7 in the carry flag.
+inline void CPU::RotateLeft(uint8_t *value) {
+  uint8_t left_bit = *value & 0x80;
+  // Shift left, filling rightmost bit with carry flag's value.
+  *value = (*value << 1) | (left_bit >> 7);
+  // Set the carry flag to the old value's 8th bit, and set the zero flag if
+  // the result was zero.
+  uint8_t zero_bit = (*value == 0) ? ZERO_FLAG : 0;
+  *f_ = (left_bit >> 3) | zero_bit;
+}
+
 // Does a bitwise left rotation, using the carry bit as a 9th bit in the
 // operation.
-// Does NOT advance the program counter.
 inline void CPU::RotateLeftThroughCarry(uint8_t *value) {
   uint8_t left_bit = *value & 0x80;
   // Shift left, filling rightmost bit with carry flag's value.
@@ -366,6 +384,9 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     break;
   case 0x06:
     LoadData8(b_, memory);
+    break;
+  case 0x07:
+    RotateLeft(a_);
     break;
   case 0x09:
     Add16(&hl_, bc_);
@@ -582,6 +603,9 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x7e:
     *a_ = Read8(hl_, memory);
     break;
+  case 0x80:
+    Add8(a_, *b_);
+    break;
   case 0x85:
     Add8(a_, *l_);
     break;
@@ -593,6 +617,9 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     break;
   case 0x87:
     Add8(a_, *a_);
+    break;
+  case 0x89:
+    Add8(a_, *c_);
     break;
   case 0x90:
     Sub8(a_, *b_);
@@ -615,16 +642,11 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0xb1:
     Or(*c_);
     break;
+  case 0xb8:
+    Cp(*b_);
+    break;
   case 0xbe:
-    {
-      uint8_t data = Read8(hl_, memory);
-
-      // NOTE: this is a subtraction operation, but we throw away the result.
-      *f_ = SUBTRACT_FLAG;  // Set subtraction flag.
-      if (*a_ == data) *f_ |= ZERO_FLAG;
-      if ((*a_ & 0xff) < (data & 0xff)) *f_ |= HALF_CARRY_FLAG;
-      if (*a_ < data) *f_ |= CARRY_FLAG;
-    }
+    Cp(Read8(hl_, memory));
     break;
   case 0xc0:
     if ((*f_ & ZERO_FLAG) == 0) Return(memory);
@@ -843,8 +865,23 @@ bool CPU::RunPrefix(uint8_t code, Memory *memory) {
   case 0x50:
     TestBit(*b_, 2);
     break;
+  case 0x58:
+    TestBit(*b_, 3);
+    break;
   case 0x5f:
     TestBit(*a_, 3);
+    break;
+  case 0x60:
+    TestBit(*b_, 4);
+    break;
+  case 0x68:
+    TestBit(*b_, 5);
+    break;
+  case 0x6f:
+    TestBit(*a_, 5);
+    break;
+  case 0x77:
+    TestBit(*a_, 6);
     break;
   case 0x7c:
     TestBit(*h_, 7);

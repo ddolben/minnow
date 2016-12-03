@@ -120,6 +120,7 @@ class CPU {
   void Add8(uint8_t *dest, uint8_t value);
   void Add16(uint16_t *dest, uint16_t value);
   void Sub8(uint8_t *dest, uint8_t value);
+  void Cp(uint8_t value);
   void And(uint8_t value);
   void Or(uint8_t value);
   void Xor(uint8_t value);
@@ -129,6 +130,7 @@ class CPU {
   uint8_t JumpRelative(bool do_jump, Memory *memory);
   void Return(Memory *memory);
 
+  void RotateLeft(uint8_t *value);
   void RotateLeftThroughCarry(uint8_t *value);
   void ShiftLeft(uint8_t *value);
   void ShiftRight(uint8_t *value);
