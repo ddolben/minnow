@@ -70,24 +70,86 @@ class MBCNone : public MemoryBankController {
   MBCNone(std::shared_ptr<MMapFile> rom) : MemoryBankController(rom) {}
 
   uint8_t Read8(uint16_t offset) override {
+    if (offset > 0x7FFF) {
+      FATALF("MBCNone: unsupported read offset: 0x%04x", offset);
+    }
     return *(reinterpret_cast<uint8_t*>(rom_->memory()) + offset);
   }
 
   void Write8(uint16_t offset, uint8_t value) override {
-    // TODO: possibly RAM?
-    WARNINGF("Unimplemented Write to Cartridge: (0x%04x) <- 0x%02x",
+    if (0x2000 <= offset && offset <= 0x3FFF) {
+      if (value > 1) {
+        FATALF("MBCNone does not support ROM bank 0x%02x", value & 0xff);
+      }
+      return;
+    }
+    FATALF("MBCNone: Unimplemented Write to Cartridge: (0x%04x) <- 0x%02x",
         offset & 0xffff, value & 0xff);
   }
+};
+
+class MBC1 : public MemoryBankController {
+ public:
+  MBC1(std::shared_ptr<MMapFile> rom) : MemoryBankController(rom) {}
+
+  uint8_t Read8(uint16_t offset) override {
+    if (offset > 0x7FFF) {
+      FATALF("TODO: MBC1 unsupported read offset: 0x%04x", offset);
+    }
+    if (0x4000 <= offset && offset < 0x8000) {
+      return *(reinterpret_cast<uint8_t*>(rom_->memory())
+          + (0x4000 * rom_bank_) + (offset - 0x4000));
+    }
+    return *(reinterpret_cast<uint8_t*>(rom_->memory()) + offset);
+  }
+
+  void Write8(uint16_t offset, uint8_t value) override {
+    if (0x2000 <= offset && offset < 0x4000) {
+      // Lower 5 bits of ROM bank.
+      rom_bank_ = (rom_bank_ & 0xe0) | (value & 0x1f);
+      if (rom_bank_ == 0 || rom_bank_ == 20 ||
+          rom_bank_ == 40 || rom_bank_ == 60) {
+        rom_bank_ += 1;
+      }
+      return;
+    }
+    if (0x4000 <= offset && offset < 0x6000) {
+      // RAM bank, or upper 2 bits of ROM bank.
+      rom_bank_ = (rom_bank_ & 0x1f) | (value & 0xe0);
+      if (rom_bank_ == 0 || rom_bank_ == 20 ||
+          rom_bank_ == 40 || rom_bank_ == 60) {
+        rom_bank_ += 1;
+      }
+      return;
+    }
+    if (0xA000 <= offset && offset < 0xC000) {
+      // TODO: RAM
+      ERRORF("TODO: MBC1: RAM Write to Cartridge: (0x%04x) <- 0x%02x",
+          offset & 0xffff, value & 0xff);
+      return;
+    }
+    FATALF("MBC1: Unimplemented Write to Cartridge: (0x%04x) <- 0x%02x",
+        offset & 0xffff, value & 0xff);
+  }
+
+ private:
+  int rom_bank_ = 0;
 };
 }  // namespace
 
 Cartridge::Cartridge(const std::string &filename)
     : rom_(new MMapFile(filename)) {
   uint8_t type_byte = rom_->Read8(kCartridgeTypeAddress);
-  if (type_byte != 0) {
-    FATALF("Unsupported cartridge type: 0x%02x", type_byte & 0xff);
+  switch (type_byte) {
+    case 0x0:
+      mbc_.reset(new MBCNone(rom_));
+      break;
+    case 0x1:
+      mbc_.reset(new MBC1(rom_));
+      break;
+    default:
+      FATALF("Unsupported cartridge type: 0x%02x", type_byte & 0xff);
   }
-  mbc_.reset(new MBCNone(rom_));
 }
 
 uint8_t Cartridge::Read8(uint16_t offset) {
@@ -112,19 +174,6 @@ void Cartridge::Write8(uint16_t offset, uint8_t value) {
   //}
   mbc_->Write8(offset, value);
   return;
-
-  if (0x2000 <= offset && offset <= 0x3FFF) {
-    // Lower 5 bits of ROM bank.
-    rom_bank_ = value & 0x1f;
-    if (rom_bank_ == 0) {
-      rom_bank_ = 1;
-    } else if (rom_bank_ > 1) {
-      FATALF("Unsupported ROM bank: 0x%02x", value & 0xff);
-    }
-    return;
-  }
-  FATALF("Unimplemented Write to Cartridge: (0x%04x) <- 0x%02x",
-      offset & 0xffff, value & 0xff);
 }
 
 std::string Cartridge::Title() {
