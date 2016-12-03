@@ -46,24 +46,22 @@ void ProcessArgs(int *argc, char **argv[]) {
 int main(int argc, char *argv[]) {
   ProcessArgs(&argc, &argv);
 
-  // TODO: don't require a bootloader file
-  if ((*FLAG_bootloader).empty()) {
-    FATALF("Missing bootloader file.");
-  }
-
   std::shared_ptr<Clock> clock(new Clock());
   std::shared_ptr<Interrupts> interrupts(new Interrupts());
   std::shared_ptr<Display> display(new Display(512, 512, clock, interrupts));
   std::shared_ptr<Cartridge> cartridge(new Cartridge(args.filename));
   std::shared_ptr<Input> input(new Input());
-  Memory memory(*FLAG_bootloader, cartridge, display, input);
+  Memory memory(cartridge, display, input);
   CPU cpu(clock, interrupts);
 
   if (cartridge->Title().compare("TETRIS") == 0)
     dgb::FIX_tetris = true;
 
-  cpu.set_pc(0x100);
-  memory.set_bootstrap_is_mapped(false);
+  if ((*FLAG_bootloader).empty()) {
+    cpu.set_pc(0x100);
+  } else {
+    memory.LoadBootloader(*FLAG_bootloader);
+  }
 
   if (!(*FLAG_breakpoint).empty()) {
     // NOTE: the breakpoint is interpreted as a hex string

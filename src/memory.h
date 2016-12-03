@@ -34,10 +34,14 @@ namespace dgb {
 //
 class Memory {
  public:
-  Memory(const std::string &bootstrap, std::shared_ptr<Cartridge> cartridge,
-      std::shared_ptr<Display> display, std::shared_ptr<Input> input)
-    : bootstrap_(new MMapFile(bootstrap)), cartridge_(cartridge),
-      display_(display), input_(input) {}
+  Memory(std::shared_ptr<Cartridge> cartridge, std::shared_ptr<Display> display,
+      std::shared_ptr<Input> input)
+    : cartridge_(cartridge), display_(display), input_(input) {}
+
+  void LoadBootloader(const std::string &filename) {
+    bootstrap_.reset(new MMapFile(filename));
+    bootstrap_is_mapped_ = true;
+  }
 
   uint8_t Read8(uint16_t offset) {
     if (bootstrap_is_mapped_ && offset <= 0xff) {  // Bootstrap code.
@@ -104,7 +108,6 @@ class Memory {
     Write(offset, reinterpret_cast<uint8_t*>(&value), 2);
   }
 
-  void set_bootstrap_is_mapped(bool value) { bootstrap_is_mapped_ = value; }
   bool bootstrap_is_mapped() { return bootstrap_is_mapped_; }
 
  private:
@@ -287,7 +290,7 @@ class Memory {
 
   void StartDMATransfer(uint8_t value);
 
-  bool bootstrap_is_mapped_ = true;
+  bool bootstrap_is_mapped_ = false;
   std::unique_ptr<MMapFile> bootstrap_;
   uint8_t wram_[8192];  // 8k of working ram
   uint8_t high_ram_[128];  // 128 bytes of high ram
