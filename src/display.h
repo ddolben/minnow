@@ -5,198 +5,37 @@
 #include <memory>
 #include <mutex>
 
-#include <SDL2/SDL.h>
-
 #include "clock.h"
 #include "interrupts.h"
 #include "logging.h"
+#include "window.h"
 
 
 namespace dgb {
 
-// Class representing the SDL window resource. The window is created when the
-// object is constructed, and corresponding state is cleaned up when the object
-// is destroyed.
-//
-// The methods of this class are threadsafe EXCEPT StartLoop().
-//
-// NOTE: You MUST use this class on the main thread, since Cocoa has some weird
-// intricacies about which thread is the UI thread.
-class Window {
- public:
-  static const int kDisplayWidth = 160;
-  static const int kDisplayHeight = 144;
-
-  Window(int width, int height, int texture_width, int texture_height)
-      : width_(width), height_(height), texture_width_(texture_width),
-        texture_height_(texture_height) {
-    // TODO: do this only once?
-    //SDL_Init(SDL_INIT_VIDEO);
-
-    window_ = SDL_CreateWindow("DGB Emulator",
-        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width_, height_, 0);
-    renderer_ = SDL_CreateRenderer(window_, -1, 0);
-    texture_ = SDL_CreateTexture(renderer_,
-        SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC,
-        texture_width_, texture_height_);
-    pixels_ = new Uint32[texture_width_ * texture_height_];
-    memset(pixels_, 0, texture_width_ * texture_height_ * sizeof(Uint32));
-  }
-
-  ~Window() {
-    delete[] pixels_;
-
-    SDL_DestroyTexture(texture_);
-    SDL_DestroyRenderer(renderer_);
-    SDL_DestroyWindow(window_);
-  }
-
-  void SetRenderFunc(std::function<void()> f) {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    render_func_ = f;
-  }
-
-  // Sets the color of a pixel in the window's texture.
-  // color is in 8-bit ARGB format
-  void SetPixel(int x, int y, uint32_t color) {
-    CHECK(0 <= x && x < texture_width_ && 0 <= y && y < texture_height_);
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    pixels_[(y * texture_width_) + x] = color;
-  }
-
-  bool IsRunning() {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    return running_;
-  }
-
-  void Kill() {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    running_ = false;
-  }
-
-  uint8_t ScrollX() { return scroll_x_; }
-  uint8_t ScrollY() { return scroll_y_; }
-  void SetScrollX(uint8_t value) { scroll_x_ = value; }
-  void SetScrollY(uint8_t value) { scroll_y_ = value; }
-
-  uint8_t WindowX() { return window_x_; }
-  uint8_t WindowY() { return window_y_; }
-  void SetWindowX(uint8_t value) { window_x_ = value; }
-  void SetWindowY(uint8_t value) { window_y_ = value; }
-
-  void Tick() {
-    if (!IsRunning()) {
-      return;
-    }
-
-    rect_.x = 0;
-    rect_.y = 0;
-    // Stretch the texture to double its size.
-    rect_.w = width_;
-    rect_.h = height_;
-
-    // Copy the display's pixels into the framebuffer. Make sure they aren't
-    // edited while we're doing this.
-    {
-      std::lock_guard<std::recursive_mutex> lock(mutex_);
-      if (render_func_ != nullptr) {
-        render_func_();
-      }
-      SDL_UpdateTexture(texture_, NULL, pixels_, texture_width_ * sizeof(Uint32));
-    }
-
-    SDL_RenderClear(renderer_);
-    SDL_RenderCopy(renderer_, texture_, NULL, &rect_);
-
-    int frame_x = scroll_x_ * 2;
-    int frame_y = scroll_y_ * 2;
-    SDL_Rect rectToDraw = {
-      frame_x,
-      frame_y,
-      kDisplayWidth*2,
-      kDisplayHeight*2};
-    SDL_SetRenderDrawColor(renderer_, 255, 0, 0, 255);
-    SDL_RenderDrawRect(renderer_, &rectToDraw);
-
-    SDL_RenderPresent(renderer_);
-  }
-
- private:
-  bool running_ = true;
-  int width_ = 0;
-  int height_ = 0;
-  int texture_width_ = 0;
-  int texture_height_ = 0;
-
-  SDL_Rect rect_;
-
-  uint8_t scroll_x_ = 0;
-  uint8_t scroll_y_ = 0;
-
-  uint8_t window_x_ = 0;
-  uint8_t window_y_ = 0;
-
-  std::recursive_mutex mutex_;
-  std::function<void()> render_func_;
-
-  SDL_Window *window_ = nullptr;
-  SDL_Renderer *renderer_ = nullptr;
-  SDL_Texture *texture_ = nullptr;
-  Uint32 *pixels_ = nullptr;
-};
-
-// Provides the looping mechanism used to control one or more Windows.
-//
-// This class is NOT thread-safe.
-//
-// NOTE: currently, I think you must create this class first. It should be
-// destroyed after all of its members, due to the shared_ptr's.
-class WindowController {
- public:
-  WindowController() {
-    // TODO: do this only once?
-    SDL_Init(SDL_INIT_VIDEO);
-  }
-
-  ~WindowController() {
-    SDL_Quit();
-  }
-
-  void AddWindow(std::shared_ptr<Window> window) {
-    windows_.push_back(window);
-  }
-
-  bool Tick() {
-    if (!running_) return false;
-
-    while (SDL_PollEvent(&event_)) {
-      // TODO: when stuck in a loop, several events appears to trigger some
-      // invalid instructions (specifically, 0xbfff <- 0x39)
-      switch (event_.type) {
-        case SDL_QUIT:
-          running_ = false;
-          break;
-      }
-    }
-
-    if (!running_) return false;
-
-    for (std::shared_ptr<Window> &window : windows_) {
-      window->Tick();
-    }
-
-    return true;
-  }
-
- private:
-  bool running_ = true;
-  std::vector<std::shared_ptr<Window>> windows_;
-  SDL_Event event_;
-};
-
 // Used to apply structure on top of tile memory.
 struct Tile {
   uint8_t data[16];
+};
+
+// Used to apply structure on top of sprite attribute memory.
+struct Sprite {
+  uint8_t data[4];
+
+  // Y position minus 16
+  uint8_t y_pos() { return data[0]; }
+  // X position minus 8
+  uint8_t x_pos() { return data[1]; }
+  // Index into the first tileset (0x8000-0x8FFF)
+  uint8_t tile_id() { return data[2]; }
+  // Bit7   OBJ-to-BG Priority (0=OBJ Above BG, 1=OBJ Behind BG color 1-3)
+  //        (Used for both BG and Window. BG color 0 is always behind OBJ)
+  // Bit6   Y flip          (0=Normal, 1=Vertically mirrored)
+  // Bit5   X flip          (0=Normal, 1=Horizontally mirrored)
+  // Bit4   Palette number  **Non CGB Mode Only** (0=OBP0, 1=OBP1)
+  // Bit3   Tile VRAM-Bank  **CGB Mode Only**     (0=Bank 0, 1=Bank 1)
+  // Bit2-0 Palette number  **CGB Mode Only**     (OBP0-7)
+  uint8_t attributes() { return data[3]; }
 };
 
 // Class representing the display device.
@@ -212,7 +51,9 @@ class Display {
   // Bit 0 - BG Display (for CGB see below) (0=Off, 1=On)
   enum ControlMask {
     TILE_DATA_SELECT_BIT = 0x10,
-    BG_TILE_MAP_SELECT_BIT = 0x08
+    BG_TILE_MAP_SELECT_BIT = 0x08,
+    OBJ_ENABLE_BIT = 0x02,
+    BG_ENABLE_BIT = 0x01
   };
 
   const static uint16_t kVRAMSize = 8192;
@@ -299,7 +140,6 @@ class Display {
     // TODO: this mutex lock doesn't actually protect against accessing the
     // tile's memory after this function returns.
     std::lock_guard<std::mutex> lock(mutex_);
-    // TODO: BG or Window tilemap?
     uint8_t tile_id = ((control_ & BG_TILE_MAP_SELECT_BIT) == 0)
         ? tilemap_[y*32 + x]
         : tilemap_[y*32 + x + 0x400];
@@ -350,18 +190,50 @@ class Display {
   void Loop() {
     // Draw the tilemap into the main window.
     window_->SetRenderFunc([this]{
-      for (int ty = 0; ty < 32; ++ty) {
-        for (int tx = 0; tx < 32; ++tx) {
-          Tile *tile = this->GetTile(tx, ty);
+      // TODO: check if LCD is on
 
+      // Render background tile map.
+      if ((control_ & BG_ENABLE_BIT) != 0) {
+        for (int ty = 0; ty < 32; ++ty) {
+          for (int tx = 0; tx < 32; ++tx) {
+            Tile *tile = this->GetTile(tx, ty);
+
+            for (int y = 0; y < 8; ++y) {
+              for (int x = 0; x < 8; ++x) {
+                // TODO: this belongs in a function
+                uint8_t *b = tile->data + (y*2);
+                uint8_t value = ((*b >> (7-x)) & 0x1) | (((*(b+1) >> (7-x)) & 0x1) << 1);
+                this->window_->SetPixel(
+                    (tx*8 + x),
+                    (ty*8 + y),
+                    this->Color(value));
+              }
+            }
+          }
+        }
+      }
+
+      // TODO: render window
+
+      // Render sprites.
+      if ((control_ & OBJ_ENABLE_BIT) != 0) {
+        for (int i = 0; i < 40; ++i) {
+          Sprite *sprite = reinterpret_cast<Sprite*>(this->sprite_attributes_ + (4*i));
+          if (sprite->y_pos() == 0 || sprite->y_pos() >= 160 ||
+              sprite->x_pos() == 0 || sprite->x_pos() >= 168) {
+            continue;
+          }
+          Tile *tile = reinterpret_cast<struct Tile*>(
+              this->vram_ + (sprite->tile_id() * 16));
           for (int y = 0; y < 8; ++y) {
             for (int x = 0; x < 8; ++x) {
-              // TODO: this belongs in a function
               uint8_t *b = tile->data + (y*2);
               uint8_t value = ((*b >> (7-x)) & 0x1) | (((*(b+1) >> (7-x)) & 0x1) << 1);
+              // TODO: use sprite palettes instead
+              // TODO: some colors are transparent
               this->window_->SetPixel(
-                  (tx*8 + x),
-                  (ty*8 + y),
+                  (sprite->x_pos() + x - 8),
+                  (sprite->y_pos() + y - 16),
                   this->Color(value));
             }
           }
