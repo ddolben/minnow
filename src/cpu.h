@@ -130,7 +130,7 @@ class CPU {
   uint8_t JumpRelative(bool do_jump, Memory *memory);
   void Return(Memory *memory);
 
-  void RotateLeft(uint8_t *value);  // RLC
+  uint8_t RotateLeft(uint8_t value);  // RLC
   void RotateLeftThroughCarry(uint8_t *value);  // RL
   void ShiftLeft(uint8_t *value);  // SLA
   void ShiftRight(uint8_t *value);  // SRL

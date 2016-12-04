@@ -214,14 +214,16 @@ inline void CPU::Return(Memory *memory) {
 }
 
 // Does a bitwise left rotation, putting the old bit 7 in the carry flag.
-inline void CPU::RotateLeft(uint8_t *value) {
-  uint8_t left_bit = *value & 0x80;
+inline uint8_t CPU::RotateLeft(uint8_t value) {
+  uint8_t left_bit = value & 0x80;
   // Shift left, filling rightmost bit with carry flag's value.
-  *value = (*value << 1) | (left_bit >> 7);
+  uint8_t new_value = (value << 1) | (left_bit >> 7);
   // Set the carry flag to the old value's 8th bit, and set the zero flag if
   // the result was zero.
-  uint8_t zero_bit = (*value == 0) ? ZERO_FLAG : 0;
+  uint8_t zero_bit = (new_value == 0) ? ZERO_FLAG : 0;
   *f_ = (left_bit >> 3) | zero_bit;
+
+  return new_value;
 }
 
 // Does a bitwise left rotation, using the carry bit as a 9th bit in the
@@ -378,7 +380,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     LoadData8(b_, memory);
     break;
   case 0x07:
-    RotateLeft(a_);
+    *a_ = RotateLeft(*a_);
     break;
   case 0x09:
     Add16(&hl_, bc_);
@@ -840,69 +842,35 @@ inline uint8_t CPU::ResetBit(uint8_t value, unsigned int bit_index) {
 
 bool CPU::RunPrefix(uint8_t code, Memory *memory) {
   switch (code) {
-  case 0x11:
-    RotateLeftThroughCarry(c_);
-    break;
-  case 0x27:
-    ShiftLeft(a_);
-    break;
-  case 0x33:
-    Swap(e_, *e_);
-    break;
-  case 0x37:
-    Swap(a_, *a_);
-    break;
-  case 0x3f:
-    ShiftRight(a_);
-    break;
-  case 0x40:
-    TestBit(*b_, 0);
-    break;
-  case 0x46:
-    TestBit(Read8(hl_, memory), 0);
-    break;
-  case 0x50:
-    TestBit(*b_, 2);
-    break;
-  case 0x58:
-    TestBit(*b_, 3);
-    break;
-  case 0x5f:
-    TestBit(*a_, 3);
-    break;
-  case 0x60:
-    TestBit(*b_, 4);
-    break;
-  case 0x68:
-    TestBit(*b_, 5);
-    break;
-  case 0x6f:
-    TestBit(*a_, 5);
-    break;
-  case 0x77:
-    TestBit(*a_, 6);
-    break;
-  case 0x7c:
-    TestBit(*h_, 7);
-    break;
-  case 0x7e:
-    TestBit(Read8(hl_, memory), 7);
-    break;
-  case 0x7f:
-    TestBit(*a_, 7);
-    break;
-  case 0x86:
-    Write8(hl_, ResetBit(Read8(hl_, memory), 0), memory);
-    break;
-  case 0x87:
-    *a_ = ResetBit(*a_, 0);
-    break;
-  case 0xbe:
-    Write8(hl_, ResetBit(Read8(hl_, memory), 7), memory);
-    break;
-  case 0xfe:
-    Write8(hl_, SetBit(Read8(hl_, memory), 7), memory); 
-    break;
+  case 0x00: *b_ = RotateLeft(*b_); break;
+  case 0x01: *c_ = RotateLeft(*c_); break;
+  case 0x02: *d_ = RotateLeft(*d_); break;
+  case 0x03: *e_ = RotateLeft(*e_); break;
+  case 0x04: *h_ = RotateLeft(*h_); break;
+  case 0x05: *l_ = RotateLeft(*l_); break;
+  case 0x06: Write8(hl_, RotateLeft(Read8(hl_, memory)), memory); break;
+  case 0x07: *a_ = RotateLeft(*a_); break;
+  case 0x11: RotateLeftThroughCarry(c_); break;
+  case 0x27: ShiftLeft(a_); break;
+  case 0x33: Swap(e_, *e_); break;
+  case 0x37: Swap(a_, *a_); break;
+  case 0x3f: ShiftRight(a_); break;
+  case 0x40: TestBit(*b_, 0); break;
+  case 0x46: TestBit(Read8(hl_, memory), 0); break;
+  case 0x50: TestBit(*b_, 2); break;
+  case 0x58: TestBit(*b_, 3); break;
+  case 0x5f: TestBit(*a_, 3); break;
+  case 0x60: TestBit(*b_, 4); break;
+  case 0x68: TestBit(*b_, 5); break;
+  case 0x6f: TestBit(*a_, 5); break;
+  case 0x77: TestBit(*a_, 6); break;
+  case 0x7c: TestBit(*h_, 7); break;
+  case 0x7e: TestBit(Read8(hl_, memory), 7); break;
+  case 0x7f: TestBit(*a_, 7); break;
+  case 0x86: Write8(hl_, ResetBit(Read8(hl_, memory), 0), memory); break;
+  case 0x87: *a_ = ResetBit(*a_, 0); break;
+  case 0xbe: Write8(hl_, ResetBit(Read8(hl_, memory), 7), memory); break;
+  case 0xfe: Write8(hl_, SetBit(Read8(hl_, memory), 7), memory); break;
   default:
     ERRORF("UNIMPLEMENTED CB PREFIX (0x%02x): %s", code,
         cb_ops[code].debug.c_str());
