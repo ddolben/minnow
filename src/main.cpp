@@ -23,6 +23,7 @@ using dgb::Display;
 using dgb::Input;
 using dgb::Interrupts;
 using dgb::Memory;
+using dgb::Timers;
 using dgb::WindowController;
 
 struct {
@@ -48,6 +49,7 @@ void ProcessArgs(int *argc, char **argv[]) {
 int main(int argc, char *argv[]) {
   ProcessArgs(&argc, &argv);
 
+  std::shared_ptr<Timers> timers(new Timers());
   std::shared_ptr<Clock> clock(new Clock());
   std::shared_ptr<Interrupts> interrupts(new Interrupts());
   std::shared_ptr<Input> input(new Input());
@@ -56,7 +58,7 @@ int main(int argc, char *argv[]) {
   std::shared_ptr<Display> display(
       new Display(512, 512, clock, interrupts, window_controller));
   std::shared_ptr<Cartridge> cartridge(new Cartridge(args.filename));
-  Memory memory(cartridge, display, input);
+  Memory memory(cartridge, display, input, timers);
   CPU cpu(clock, interrupts);
 
   if ((*FLAG_bootloader).empty()) {

@@ -12,6 +12,7 @@
 #include "input.h"
 #include "logging.h"
 #include "mmapfile.h"
+#include "timers.h"
 
 
 namespace dgb {
@@ -35,8 +36,9 @@ namespace dgb {
 class Memory {
  public:
   Memory(std::shared_ptr<Cartridge> cartridge, std::shared_ptr<Display> display,
-      std::shared_ptr<Input> input)
-    : cartridge_(cartridge), display_(display), input_(input) {}
+      std::shared_ptr<Input> input, std::shared_ptr<Timers> timers)
+    : cartridge_(cartridge), display_(display), input_(input), timers_(timers) {
+  }
 
   void LoadBootloader(const std::string &filename) {
     bootstrap_.reset(new MMapFile(filename));
@@ -143,6 +145,9 @@ class Memory {
   uint8_t ReadFromDevice(uint16_t offset) {
     if (offset == 0xff00) {
       return input_->Joypad();
+    }
+    if (offset == 0xff04) {
+      return timers_->Divider();
     }
     if (offset == 0xff0f) {  // Interrupt Flag register.
       return interrupt_flag_;
@@ -288,6 +293,7 @@ class Memory {
   std::shared_ptr<Cartridge> cartridge_;
   std::shared_ptr<Display> display_;
   std::shared_ptr<Input> input_;
+  std::shared_ptr<Timers> timers_;
 };
 
 }  // namespace dgb
