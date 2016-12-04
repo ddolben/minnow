@@ -378,15 +378,9 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x01:
     LoadData16(&bc_, memory);
     break;
-  case 0x03:
-    Inc16(&bc_);
-    break;
-  case 0x04:
-    Inc8(b_);
-    break;
-  case 0x05:
-    Dec8(b_);
-    break;
+  case 0x03: Inc16(&bc_); break;
+  case 0x04: Inc8(b_); break;
+  case 0x05: Dec8(b_); break;
   case 0x06:
     LoadData8(b_, memory);
     break;
@@ -400,12 +394,8 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     *a_ = Read8(bc_, memory);
     break;
   case 0x0b: Dec16(&bc_); break;
-  case 0x0c:
-    Inc8(c_);
-    break;
-  case 0x0d:
-    Dec8(c_);
-    break;
+  case 0x0c: Inc8(c_); break;
+  case 0x0d: Dec8(c_); break;
   case 0x0e:
     LoadData8(c_, memory);
     break;
@@ -415,12 +405,9 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x12:
     Write8(de_, *a_, memory);
     break;
-  case 0x13:
-    Inc16(&de_);
-    break;
-  case 0x15:
-    Dec8(d_);
-    break;
+  case 0x13: Inc16(&de_); break;
+  case 0x14: Inc8(d_); break;
+  case 0x15: Dec8(d_); break;
   case 0x16:
     LoadData8(d_, memory);
     break;
@@ -450,12 +437,9 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     Write8(hl_, *a_, memory);
     hl_ += 1;
     break;
-  case 0x23:
-    Inc16(&hl_);
-    break;
-  case 0x24:
-    Inc8(h_);
-    break;
+  case 0x23: Inc16(&hl_); break;
+  case 0x24: Inc8(h_); break;
+  case 0x25: Dec8(h_); break;
   case 0x26:
     *h_ = Read8(pc_, memory);
     pc_++;
@@ -483,6 +467,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     Write8(hl_, *a_, memory);
     hl_ -= 1;
     break;
+  case 0x33: Inc16(&sp_); break;
   case 0x34:
     {
       uint8_t value = Read8(hl_, memory);
@@ -632,18 +617,25 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0xaf:
     Xor(*a_);
     break;
-  case 0xb0:
-    Or(*b_);
-    break;
-  case 0xb1:
-    Or(*c_);
-    break;
-  case 0xb8:
-    Cp(*b_);
-    break;
-  case 0xbe:
-    Cp(Read8(hl_, memory));
-    break;
+
+  case 0xb0: Or(*b_); break;
+  case 0xb1: Or(*c_); break;
+  case 0xb2: Or(*d_); break;
+  case 0xb3: Or(*e_); break;
+  case 0xb4: Or(*h_); break;
+  case 0xb5: Or(*l_); break;
+  case 0xb6: Or(Read8(hl_, memory)); break;
+  case 0xb7: Or(*a_); break;
+
+  case 0xb8: Cp(*b_); break;
+  case 0xb9: Cp(*c_); break;
+  case 0xba: Cp(*d_); break;
+  case 0xbb: Cp(*e_); break;
+  case 0xbc: Cp(*h_); break;
+  case 0xbd: Cp(*l_); break;
+  case 0xbe: Cp(Read8(hl_, memory)); break;
+  case 0xbf: Cp(*a_); break;
+
   case 0xc0:
     if ((*f_ & ZERO_FLAG) == 0) Return(memory);
     break;
@@ -931,10 +923,150 @@ bool CPU::RunPrefix(uint8_t code, Memory *memory) {
   case 0x7e: TestBit(Read8(hl_, memory), 7); break;
   case 0x7f: TestBit(*a_, 7); break;
 
+  case 0x80: *b_ = ResetBit(*b_, 0); break;
+  case 0x81: *c_ = ResetBit(*b_, 0); break;
+  case 0x82: *d_ = ResetBit(*b_, 0); break;
+  case 0x83: *e_ = ResetBit(*b_, 0); break;
+  case 0x84: *h_ = ResetBit(*b_, 0); break;
+  case 0x85: *l_ = ResetBit(*b_, 0); break;
   case 0x86: Write8(hl_, ResetBit(Read8(hl_, memory), 0), memory); break;
-  case 0x87: *a_ = ResetBit(*a_, 0); break;
+  case 0x87: *a_ = ResetBit(*b_, 0); break;
+
+  case 0x88: *b_ = ResetBit(*b_, 1); break;
+  case 0x89: *c_ = ResetBit(*b_, 1); break;
+  case 0x8a: *d_ = ResetBit(*b_, 1); break;
+  case 0x8b: *e_ = ResetBit(*b_, 1); break;
+  case 0x8c: *h_ = ResetBit(*b_, 1); break;
+  case 0x8d: *l_ = ResetBit(*b_, 1); break;
+  case 0x8e: Write8(hl_, ResetBit(Read8(hl_, memory), 1), memory); break;
+  case 0x8f: *a_ = ResetBit(*b_, 1); break;
+
+  case 0x90: *b_ = ResetBit(*b_, 2); break;
+  case 0x91: *c_ = ResetBit(*b_, 2); break;
+  case 0x92: *d_ = ResetBit(*b_, 2); break;
+  case 0x93: *e_ = ResetBit(*b_, 2); break;
+  case 0x94: *h_ = ResetBit(*b_, 2); break;
+  case 0x95: *l_ = ResetBit(*b_, 2); break;
+  case 0x96: Write8(hl_, ResetBit(Read8(hl_, memory), 2), memory); break;
+  case 0x97: *a_ = ResetBit(*b_, 2); break;
+
+  case 0x98: *b_ = ResetBit(*b_, 3); break;
+  case 0x99: *c_ = ResetBit(*b_, 3); break;
+  case 0x9a: *d_ = ResetBit(*b_, 3); break;
+  case 0x9b: *e_ = ResetBit(*b_, 3); break;
+  case 0x9c: *h_ = ResetBit(*b_, 3); break;
+  case 0x9d: *l_ = ResetBit(*b_, 3); break;
+  case 0x9e: Write8(hl_, ResetBit(Read8(hl_, memory), 3), memory); break;
+  case 0x9f: *a_ = ResetBit(*b_, 3); break;
+
+  case 0xa0: *b_ = ResetBit(*b_, 4); break;
+  case 0xa1: *c_ = ResetBit(*b_, 4); break;
+  case 0xa2: *d_ = ResetBit(*b_, 4); break;
+  case 0xa3: *e_ = ResetBit(*b_, 4); break;
+  case 0xa4: *h_ = ResetBit(*b_, 4); break;
+  case 0xa5: *l_ = ResetBit(*b_, 4); break;
+  case 0xa6: Write8(hl_, ResetBit(Read8(hl_, memory), 4), memory); break;
+  case 0xa7: *a_ = ResetBit(*b_, 4); break;
+
+  case 0xa8: *b_ = ResetBit(*b_, 5); break;
+  case 0xa9: *c_ = ResetBit(*b_, 5); break;
+  case 0xaa: *d_ = ResetBit(*b_, 5); break;
+  case 0xab: *e_ = ResetBit(*b_, 5); break;
+  case 0xac: *h_ = ResetBit(*b_, 5); break;
+  case 0xad: *l_ = ResetBit(*b_, 5); break;
+  case 0xae: Write8(hl_, ResetBit(Read8(hl_, memory), 5), memory); break;
+  case 0xaf: *a_ = ResetBit(*b_, 5); break;
+
+  case 0xb0: *b_ = ResetBit(*b_, 6); break;
+  case 0xb1: *c_ = ResetBit(*b_, 6); break;
+  case 0xb2: *d_ = ResetBit(*b_, 6); break;
+  case 0xb3: *e_ = ResetBit(*b_, 6); break;
+  case 0xb4: *h_ = ResetBit(*b_, 6); break;
+  case 0xb5: *l_ = ResetBit(*b_, 6); break;
+  case 0xb6: Write8(hl_, ResetBit(Read8(hl_, memory), 6), memory); break;
+  case 0xb7: *a_ = ResetBit(*b_, 6); break;
+
+  case 0xb8: *b_ = ResetBit(*b_, 7); break;
+  case 0xb9: *c_ = ResetBit(*b_, 7); break;
+  case 0xba: *d_ = ResetBit(*b_, 7); break;
+  case 0xbb: *e_ = ResetBit(*b_, 7); break;
+  case 0xbc: *h_ = ResetBit(*b_, 7); break;
+  case 0xbd: *l_ = ResetBit(*b_, 7); break;
   case 0xbe: Write8(hl_, ResetBit(Read8(hl_, memory), 7), memory); break;
+  case 0xbf: *a_ = ResetBit(*b_, 7); break;
+
+  case 0xc0: *b_ = SetBit(*b_, 0); break;
+  case 0xc1: *c_ = SetBit(*b_, 0); break;
+  case 0xc2: *d_ = SetBit(*b_, 0); break;
+  case 0xc3: *e_ = SetBit(*b_, 0); break;
+  case 0xc4: *h_ = SetBit(*b_, 0); break;
+  case 0xc5: *l_ = SetBit(*b_, 0); break;
+  case 0xc6: Write8(hl_, SetBit(Read8(hl_, memory), 0), memory); break;
+  case 0xc7: *a_ = SetBit(*b_, 0); break;
+
+  case 0xc8: *b_ = SetBit(*b_, 1); break;
+  case 0xc9: *c_ = SetBit(*b_, 1); break;
+  case 0xca: *d_ = SetBit(*b_, 1); break;
+  case 0xcb: *e_ = SetBit(*b_, 1); break;
+  case 0xcc: *h_ = SetBit(*b_, 1); break;
+  case 0xcd: *l_ = SetBit(*b_, 1); break;
+  case 0xce: Write8(hl_, SetBit(Read8(hl_, memory), 1), memory); break;
+  case 0xcf: *a_ = SetBit(*b_, 1); break;
+
+  case 0xd0: *b_ = SetBit(*b_, 2); break;
+  case 0xd1: *c_ = SetBit(*b_, 2); break;
+  case 0xd2: *d_ = SetBit(*b_, 2); break;
+  case 0xd3: *e_ = SetBit(*b_, 2); break;
+  case 0xd4: *h_ = SetBit(*b_, 2); break;
+  case 0xd5: *l_ = SetBit(*b_, 2); break;
+  case 0xd6: Write8(hl_, SetBit(Read8(hl_, memory), 2), memory); break;
+  case 0xd7: *a_ = SetBit(*b_, 2); break;
+
+  case 0xd8: *b_ = SetBit(*b_, 3); break;
+  case 0xd9: *c_ = SetBit(*b_, 3); break;
+  case 0xda: *d_ = SetBit(*b_, 3); break;
+  case 0xdb: *e_ = SetBit(*b_, 3); break;
+  case 0xdc: *h_ = SetBit(*b_, 3); break;
+  case 0xdd: *l_ = SetBit(*b_, 3); break;
+  case 0xde: Write8(hl_, SetBit(Read8(hl_, memory), 3), memory); break;
+  case 0xdf: *a_ = SetBit(*b_, 3); break;
+
+  case 0xe0: *b_ = SetBit(*b_, 4); break;
+  case 0xe1: *c_ = SetBit(*b_, 4); break;
+  case 0xe2: *d_ = SetBit(*b_, 4); break;
+  case 0xe3: *e_ = SetBit(*b_, 4); break;
+  case 0xe4: *h_ = SetBit(*b_, 4); break;
+  case 0xe5: *l_ = SetBit(*b_, 4); break;
+  case 0xe6: Write8(hl_, SetBit(Read8(hl_, memory), 4), memory); break;
+  case 0xe7: *a_ = SetBit(*b_, 4); break;
+
+  case 0xe8: *b_ = SetBit(*b_, 5); break;
+  case 0xe9: *c_ = SetBit(*b_, 5); break;
+  case 0xea: *d_ = SetBit(*b_, 5); break;
+  case 0xeb: *e_ = SetBit(*b_, 5); break;
+  case 0xec: *h_ = SetBit(*b_, 5); break;
+  case 0xed: *l_ = SetBit(*b_, 5); break;
+  case 0xee: Write8(hl_, SetBit(Read8(hl_, memory), 5), memory); break;
+  case 0xef: *a_ = SetBit(*b_, 5); break;
+
+  case 0xf0: *b_ = SetBit(*b_, 6); break;
+  case 0xf1: *c_ = SetBit(*b_, 6); break;
+  case 0xf2: *d_ = SetBit(*b_, 6); break;
+  case 0xf3: *e_ = SetBit(*b_, 6); break;
+  case 0xf4: *h_ = SetBit(*b_, 6); break;
+  case 0xf5: *l_ = SetBit(*b_, 6); break;
+  case 0xf6: Write8(hl_, SetBit(Read8(hl_, memory), 6), memory); break;
+  case 0xf7: *a_ = SetBit(*b_, 6); break;
+
+  case 0xf8: *b_ = SetBit(*b_, 7); break;
+  case 0xf9: *c_ = SetBit(*b_, 7); break;
+  case 0xfa: *d_ = SetBit(*b_, 7); break;
+  case 0xfb: *e_ = SetBit(*b_, 7); break;
+  case 0xfc: *h_ = SetBit(*b_, 7); break;
+  case 0xfd: *l_ = SetBit(*b_, 7); break;
   case 0xfe: Write8(hl_, SetBit(Read8(hl_, memory), 7), memory); break;
+  case 0xff: *a_ = SetBit(*b_, 7); break;
+
   default:
     ERRORF("UNIMPLEMENTED CB PREFIX (0x%02x): %s", code,
         cb_ops[code].debug.c_str());
