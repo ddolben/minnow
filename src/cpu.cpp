@@ -850,23 +850,85 @@ bool CPU::RunPrefix(uint8_t code, Memory *memory) {
   case 0x05: *l_ = RotateLeft(*l_); break;
   case 0x06: Write8(hl_, RotateLeft(Read8(hl_, memory)), memory); break;
   case 0x07: *a_ = RotateLeft(*a_); break;
+
   case 0x11: RotateLeftThroughCarry(c_); break;
   case 0x27: ShiftLeft(a_); break;
   case 0x33: Swap(e_, *e_); break;
   case 0x37: Swap(a_, *a_); break;
   case 0x3f: ShiftRight(a_); break;
+
   case 0x40: TestBit(*b_, 0); break;
+  case 0x41: TestBit(*c_, 0); break;
+  case 0x42: TestBit(*d_, 0); break;
+  case 0x43: TestBit(*e_, 0); break;
+  case 0x44: TestBit(*h_, 0); break;
+  case 0x45: TestBit(*l_, 0); break;
   case 0x46: TestBit(Read8(hl_, memory), 0); break;
+  case 0x47: TestBit(*a_, 0); break;
+
+  case 0x48: TestBit(*b_, 1); break;
+  case 0x49: TestBit(*c_, 1); break;
+  case 0x4a: TestBit(*d_, 1); break;
+  case 0x4b: TestBit(*e_, 1); break;
+  case 0x4c: TestBit(*h_, 1); break;
+  case 0x4d: TestBit(*l_, 1); break;
+  case 0x4e: TestBit(Read8(hl_, memory), 1); break;
+  case 0x4f: TestBit(*a_, 1); break;
+
   case 0x50: TestBit(*b_, 2); break;
+  case 0x51: TestBit(*c_, 2); break;
+  case 0x52: TestBit(*d_, 2); break;
+  case 0x53: TestBit(*e_, 2); break;
+  case 0x54: TestBit(*h_, 2); break;
+  case 0x55: TestBit(*l_, 2); break;
+  case 0x56: TestBit(Read8(hl_, memory), 2); break;
+  case 0x57: TestBit(*a_, 2); break;
+
   case 0x58: TestBit(*b_, 3); break;
+  case 0x59: TestBit(*c_, 3); break;
+  case 0x5a: TestBit(*d_, 3); break;
+  case 0x5b: TestBit(*e_, 3); break;
+  case 0x5c: TestBit(*h_, 3); break;
+  case 0x5d: TestBit(*l_, 3); break;
+  case 0x5e: TestBit(Read8(hl_, memory), 3); break;
   case 0x5f: TestBit(*a_, 3); break;
+
   case 0x60: TestBit(*b_, 4); break;
+  case 0x61: TestBit(*c_, 4); break;
+  case 0x62: TestBit(*d_, 4); break;
+  case 0x63: TestBit(*e_, 4); break;
+  case 0x64: TestBit(*h_, 4); break;
+  case 0x65: TestBit(*l_, 4); break;
+  case 0x66: TestBit(Read8(hl_, memory), 4); break;
+  case 0x67: TestBit(*a_, 4); break;
+
   case 0x68: TestBit(*b_, 5); break;
+  case 0x69: TestBit(*c_, 5); break;
+  case 0x6a: TestBit(*d_, 5); break;
+  case 0x6b: TestBit(*e_, 5); break;
+  case 0x6c: TestBit(*h_, 5); break;
+  case 0x6d: TestBit(*l_, 5); break;
+  case 0x6e: TestBit(Read8(hl_, memory), 5); break;
   case 0x6f: TestBit(*a_, 5); break;
+
+  case 0x70: TestBit(*b_, 6); break;
+  case 0x71: TestBit(*c_, 6); break;
+  case 0x72: TestBit(*d_, 6); break;
+  case 0x73: TestBit(*e_, 6); break;
+  case 0x74: TestBit(*h_, 6); break;
+  case 0x75: TestBit(*l_, 6); break;
+  case 0x76: TestBit(Read8(hl_, memory), 6); break;
   case 0x77: TestBit(*a_, 6); break;
+
+  case 0x78: TestBit(*b_, 7); break;
+  case 0x79: TestBit(*c_, 7); break;
+  case 0x7a: TestBit(*d_, 7); break;
+  case 0x7b: TestBit(*e_, 7); break;
   case 0x7c: TestBit(*h_, 7); break;
+  case 0x7d: TestBit(*l_, 7); break;
   case 0x7e: TestBit(Read8(hl_, memory), 7); break;
   case 0x7f: TestBit(*a_, 7); break;
+
   case 0x86: Write8(hl_, ResetBit(Read8(hl_, memory), 0), memory); break;
   case 0x87: *a_ = ResetBit(*a_, 0); break;
   case 0xbe: Write8(hl_, ResetBit(Read8(hl_, memory), 7), memory); break;
