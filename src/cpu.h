@@ -130,13 +130,13 @@ class CPU {
   uint8_t JumpRelative(bool do_jump, Memory *memory);
   void Return(Memory *memory);
 
-  void RotateLeft(uint8_t *value);
-  void RotateLeftThroughCarry(uint8_t *value);
-  void ShiftLeft(uint8_t *value);
-  void ShiftRight(uint8_t *value);
+  void RotateLeft(uint8_t *value);  // RLC
+  void RotateLeftThroughCarry(uint8_t *value);  // RL
+  void ShiftLeft(uint8_t *value);  // SLA
+  void ShiftRight(uint8_t *value);  // SRL
   void Swap (uint8_t *dest, uint8_t value);
   void TestBit(uint8_t value, unsigned int bit_index);
-  void SetBit(uint8_t *dest, unsigned int bit_index);
+  uint8_t SetBit(uint8_t value, unsigned int bit_index);
   uint8_t ResetBit(uint8_t value, unsigned int bit_index);
 
   uint16_t previous_pc_ = 0;

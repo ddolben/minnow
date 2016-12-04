@@ -695,6 +695,10 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0xd5:
     Push(de_, memory);
     break;
+  case 0xd6:
+    Sub8(a_, Read8(pc_, memory));
+    pc_++;
+    break;
   case 0xd9:
     Return(memory);
     ime_ = true;  // Re-enable interrupts.
@@ -826,8 +830,8 @@ inline void CPU::TestBit(uint8_t value, unsigned int bit_index) {
   *f_ = zero | 0x20 | (*f_ & CARRY_FLAG);
 }
 
-inline void CPU::SetBit(uint8_t *dest, unsigned int bit_index) {
-  *dest |= (1 << bit_index);
+inline uint8_t CPU::SetBit(uint8_t value, unsigned int bit_index) {
+  return value | (1 << bit_index);
 }
 
 inline uint8_t CPU::ResetBit(uint8_t value, unsigned int bit_index) {
@@ -853,6 +857,9 @@ bool CPU::RunPrefix(uint8_t code, Memory *memory) {
     break;
   case 0x40:
     TestBit(*b_, 0);
+    break;
+  case 0x46:
+    TestBit(Read8(hl_, memory), 0);
     break;
   case 0x50:
     TestBit(*b_, 2);
@@ -889,6 +896,12 @@ bool CPU::RunPrefix(uint8_t code, Memory *memory) {
     break;
   case 0x87:
     *a_ = ResetBit(*a_, 0);
+    break;
+  case 0xbe:
+    Write8(hl_, ResetBit(Read8(hl_, memory), 7), memory);
+    break;
+  case 0xfe:
+    Write8(hl_, SetBit(Read8(hl_, memory), 7), memory); 
     break;
   default:
     ERRORF("UNIMPLEMENTED CB PREFIX (0x%02x): %s", code,
