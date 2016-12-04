@@ -79,11 +79,6 @@ inline uint16_t CPU::LoadData16(uint16_t *dest, Memory *memory) {
   return data;
 }
 
-// Copies 8 bits from one register to another.
-inline void CPU::LoadReg8(uint8_t *dest, uint8_t value) {
-  *dest = value;
-}
-
 // Increments 8-bit value by one and sets flags accordingly.
 inline void CPU::Inc8(uint8_t *value) {
   // Check if the lower 4 bits are 1, which means the inc operation will
@@ -447,9 +442,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x1e:
     LoadData8(e_, memory);
     break;
-  case 0x20:
-    JumpRelative((*f_ & ZERO_FLAG) == 0, memory);
-    break;
+  case 0x20: JumpRelative((*f_ & ZERO_FLAG) == 0, memory); break;
   case 0x21:
     LoadData16(&hl_, memory);
     break;
@@ -464,12 +457,10 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     Inc8(h_);
     break;
   case 0x26:
-    LoadReg8(h_, Read8(pc_, memory));
+    *h_ = Read8(pc_, memory);
     pc_++;
     break;
-  case 0x28:
-    JumpRelative((*f_ & ZERO_FLAG) != 0, memory);
-    break;
+  case 0x28: JumpRelative((*f_ & ZERO_FLAG) != 0, memory); break;
   case 0x2a:
     *a_ = Read8(hl_, memory);
     hl_ += 1;
@@ -484,6 +475,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     *a_ = ~(*a_);
     *f_ = SUBTRACT_FLAG | HALF_CARRY_FLAG;
     break;
+  case 0x30: JumpRelative((*f_ | CARRY_FLAG) == 0, memory); break;
   case 0x31:
     LoadData16(&sp_, memory);
     break;
@@ -508,9 +500,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x36:
     LoadData8ToMem(hl_, memory);
     break;
-  case 0x38:
-    JumpRelative((*f_ | CARRY_FLAG) != 0, memory);
-    break;
+  case 0x38: JumpRelative((*f_ | CARRY_FLAG) != 0, memory); break;
   case 0x3a:
     *a_ = Read8(hl_, memory);
     hl_--;
@@ -521,90 +511,78 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x3e:
     LoadData8(a_, memory);
     break;
-  case 0x40:
-    LoadReg8(b_, *b_);
-    break;
-  case 0x46:
-    *b_ = Read8(hl_, memory);
-    break;
-  case 0x47:
-    LoadReg8(b_, *a_);
-    break;
-  case 0x4e:
-    *c_ = Read8(hl_, memory);
-    break;
-  case 0x4f:
-    LoadReg8(c_, *a_);
-    break;
-  case 0x54:
-    LoadReg8(d_, *h_);
-    break;
-  case 0x56:
-    *d_ = Read8(hl_, memory);
-    break;
-  case 0x57:
-    LoadReg8(d_, *a_);
-    break;
-  case 0x5d:
-    LoadReg8(e_, *l_);
-    break;
-  case 0x5e:
-    *e_ = Read8(hl_, memory);
-    break;
-  case 0x5f:
-    LoadReg8(e_, *a_);
-    break;
-  case 0x60:
-    LoadReg8(h_, *b_);
-    break;
-  case 0x62:
-    LoadReg8(h_, *d_);
-    break;
-  case 0x67:
-    LoadReg8(h_, *a_);
-    break;
-  case 0x69:
-    LoadReg8(l_, *c_);
-    break;
-  case 0x6b:
-    LoadReg8(l_, *e_);
-    break;
-  case 0x6f:
-    LoadReg8(l_, *a_);
-    break;
-  case 0x71:
-    Write8(hl_, *c_, memory);
-    break;
-  case 0x72:
-    Write8(hl_, *d_, memory);
-    break;
-  case 0x73:
-    Write8(hl_, *e_, memory);
-    break;
-  case 0x77:
-    Write8(hl_, *a_, memory);
-    break;
-  case 0x78:
-    LoadReg8(a_, *b_);
-    break;
-  case 0x79:
-    LoadReg8(a_, *c_);
-    break;
-  case 0x7a:
-    LoadReg8(a_, *d_);
-    break;
-  case 0x7b:
-    LoadReg8(a_, *e_);
-    break;
-  case 0x7c:
-    LoadReg8(a_, *h_);
-    break;
-  case 0x7d:
-    LoadReg8(a_, *l_);
-    break;
-  case 0x7e:
-    *a_ = Read8(hl_, memory);
-    break;
+
+  case 0x40: *b_ = *b_; break;
+  case 0x41: *b_ = *c_; break;
+  case 0x42: *b_ = *d_; break;
+  case 0x43: *b_ = *e_; break;
+  case 0x44: *b_ = *h_; break;
+  case 0x45: *b_ = *l_; break;
+  case 0x46: *b_ = Read8(hl_, memory); break;
+  case 0x47: *b_ = *a_; break;
+
+  case 0x48: *c_ = *b_; break;
+  case 0x49: *c_ = *c_; break;
+  case 0x4a: *c_ = *d_; break;
+  case 0x4b: *c_ = *e_; break;
+  case 0x4c: *c_ = *h_; break;
+  case 0x4d: *c_ = *l_; break;
+  case 0x4e: *c_ = Read8(hl_, memory); break;
+  case 0x4f: *c_ = *a_; break;
+
+  case 0x50: *d_ = *b_; break;
+  case 0x51: *d_ = *c_; break;
+  case 0x52: *d_ = *d_; break;
+  case 0x53: *d_ = *e_; break;
+  case 0x54: *d_ = *h_; break;
+  case 0x55: *d_ = *l_; break;
+  case 0x56: *d_ = Read8(hl_, memory); break;
+  case 0x57: *d_ = *a_; break;
+
+  case 0x58: *e_ = *b_; break;
+  case 0x59: *e_ = *c_; break;
+  case 0x5a: *e_ = *d_; break;
+  case 0x5b: *e_ = *e_; break;
+  case 0x5c: *e_ = *h_; break;
+  case 0x5d: *e_ = *l_; break;
+  case 0x5e: *e_ = Read8(hl_, memory); break;
+  case 0x5f: *e_ = *a_; break;
+
+  case 0x60: *h_ = *b_; break;
+  case 0x61: *h_ = *c_; break;
+  case 0x62: *h_ = *d_; break;
+  case 0x63: *h_ = *e_; break;
+  case 0x64: *h_ = *h_; break;
+  case 0x65: *h_ = *l_; break;
+  case 0x66: *h_ = Read8(hl_, memory); break;
+  case 0x67: *h_ = *a_; break;
+
+  case 0x68: *l_ = *b_; break;
+  case 0x69: *l_ = *c_; break;
+  case 0x6a: *l_ = *d_; break;
+  case 0x6b: *l_ = *e_; break;
+  case 0x6c: *l_ = *h_; break;
+  case 0x6d: *l_ = *l_; break;
+  case 0x6e: *l_ = Read8(hl_, memory); break;
+  case 0x6f: *l_ = *a_; break;
+
+  case 0x70: Write8(hl_, *b_, memory); break;
+  case 0x71: Write8(hl_, *c_, memory); break;
+  case 0x72: Write8(hl_, *d_, memory); break;
+  case 0x73: Write8(hl_, *e_, memory); break;
+  case 0x74: Write8(hl_, *h_, memory); break;
+  case 0x75: Write8(hl_, *l_, memory); break;
+  // TODO: HALT
+  case 0x77: Write8(hl_, *a_, memory); break;
+
+  case 0x78: *a_ = *b_; break;
+  case 0x79: *a_ = *c_; break;
+  case 0x7a: *a_ = *d_; break;
+  case 0x7b: *a_ = *e_; break;
+  case 0x7c: *a_ = *h_; break;
+  case 0x7d: *a_ = *l_; break;
+  case 0x7e: *a_ = Read8(hl_, memory); break;
+  case 0x7f: *a_ = *a_; break;
 
   case 0x80: Add8(a_, *b_); break;
   case 0x81: Add8(a_, *c_); break;
