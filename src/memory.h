@@ -150,6 +150,9 @@ class Memory {
     if (offset == 0xff40) {
       return display_->Control();
     }
+    if (offset == 0xff41) {
+      return display_->Status();
+    }
     if (offset == 0xff42) {
       return display_->ScrollY();
     }
