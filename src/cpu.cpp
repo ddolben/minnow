@@ -133,6 +133,14 @@ inline void CPU::Add8(uint8_t *dest, uint8_t value) {
   if (*dest == 0) *f_ |= ZERO_FLAG;
 }
 
+inline void CPU::AddCarry8(uint8_t *dest, uint8_t value) {
+  uint8_t carry = (*f_ | CARRY_FLAG) >> 4;
+  // Do these as two separate operations to properly handle the case when value
+  // is 0xff and the carry flag is set.
+  Add8(dest, value);
+  Add8(dest, carry);
+}
+
 inline void CPU::Add16(uint16_t *dest, uint16_t value) {
   *f_ = (*f_ & ZERO_FLAG);  // Reset subtraction flag, leave zero flag alone.
   if ((value & 0xfff) > (0xfff - (*dest & 0xfff))) *f_ |= HALF_CARRY_FLAG;
@@ -148,6 +156,14 @@ inline void CPU::Sub8(uint8_t *dest, uint8_t value) {
   if (*dest < value) *f_ |= CARRY_FLAG;
 
   *dest -= value;
+}
+
+inline void CPU::SubCarry8(uint8_t *dest, uint8_t value) {
+  uint8_t carry = (*f_ | CARRY_FLAG) >> 4;
+  // Do these as two separate operations to properly handle the case when value
+  // is 0xff and the carry flag is set.
+  Sub8(dest, value);
+  Sub8(dest, carry);
 }
 
 // NOTE: this is a subtraction operation, but we throw away the result.
@@ -388,9 +404,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x0a:
     *a_ = Read8(bc_, memory);
     break;
-  case 0x0b:
-    Dec16(&bc_);
-    break;
+  case 0x0b: Dec16(&bc_); break;
   case 0x0c:
     Inc8(c_);
     break;
@@ -427,17 +441,14 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x1a:
     *a_ = Read8(de_, memory);
     break;
-  case 0x1c:
-    Inc8(e_);
-    break;
-  case 0x1d:
-    Dec8(e_);
-    break;
+  case 0x1b: Dec16(&de_); break;
+  case 0x1c: Inc8(e_); break;
+  case 0x1d: Dec8(e_); break;
   case 0x1e:
     LoadData8(e_, memory);
     break;
   case 0x20:
-    JumpRelative(((*f_ & ZERO_FLAG) == 0), memory);
+    JumpRelative((*f_ & ZERO_FLAG) == 0, memory);
     break;
   case 0x21:
     LoadData16(&hl_, memory);
@@ -457,18 +468,15 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     pc_++;
     break;
   case 0x28:
-    JumpRelative(((*f_ & ZERO_FLAG) != 0), memory);
+    JumpRelative((*f_ & ZERO_FLAG) != 0, memory);
     break;
   case 0x2a:
     *a_ = Read8(hl_, memory);
     hl_ += 1;
     break;
-  case 0x2c:
-    Inc8(l_);
-    break;
-  case 0x2d:
-    Dec8(l_);
-    break;
+  case 0x2b: Dec16(&hl_); break;
+  case 0x2c: Inc8(l_); break;
+  case 0x2d: Dec8(l_); break;
   case 0x2e:
     LoadData8(l_, memory);
     break;
@@ -500,16 +508,16 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x36:
     LoadData8ToMem(hl_, memory);
     break;
+  case 0x38:
+    JumpRelative((*f_ | CARRY_FLAG) != 0, memory);
+    break;
   case 0x3a:
     *a_ = Read8(hl_, memory);
     hl_--;
     break;
-  case 0x3c:
-    Inc8(a_);
-    break;
-  case 0x3d:
-    Dec8(a_);
-    break;
+  case 0x3b: Dec16(&sp_); break;
+  case 0x3c: Inc8(a_); break;
+  case 0x3d: Dec8(a_); break;
   case 0x3e:
     LoadData8(a_, memory);
     break;
@@ -597,27 +605,43 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x7e:
     *a_ = Read8(hl_, memory);
     break;
-  case 0x80:
-    Add8(a_, *b_);
-    break;
-  case 0x85:
-    Add8(a_, *l_);
-    break;
-  case 0x86:
-    {
-      uint8_t data = Read8(hl_, memory);
-      Add8(a_, data);
-    }
-    break;
-  case 0x87:
-    Add8(a_, *a_);
-    break;
-  case 0x89:
-    Add8(a_, *c_);
-    break;
-  case 0x90:
-    Sub8(a_, *b_);
-    break;
+
+  case 0x80: Add8(a_, *b_); break;
+  case 0x81: Add8(a_, *c_); break;
+  case 0x82: Add8(a_, *d_); break;
+  case 0x83: Add8(a_, *e_); break;
+  case 0x84: Add8(a_, *h_); break;
+  case 0x85: Add8(a_, *l_); break;
+  case 0x86: Add8(a_, Read8(hl_, memory)); break;
+  case 0x87: Add8(a_, *a_); break;
+
+  case 0x88: AddCarry8(a_, *b_); break;
+  case 0x89: AddCarry8(a_, *c_); break;
+  case 0x8a: AddCarry8(a_, *d_); break;
+  case 0x8b: AddCarry8(a_, *e_); break;
+  case 0x8c: AddCarry8(a_, *h_); break;
+  case 0x8d: AddCarry8(a_, *l_); break;
+  case 0x8e: AddCarry8(a_, Read8(hl_, memory)); break;
+  case 0x8f: AddCarry8(a_, *a_); break;
+
+  case 0x90: Sub8(a_, *b_); break;
+  case 0x91: Sub8(a_, *c_); break;
+  case 0x92: Sub8(a_, *d_); break;
+  case 0x93: Sub8(a_, *e_); break;
+  case 0x94: Sub8(a_, *h_); break;
+  case 0x95: Sub8(a_, *l_); break;
+  case 0x96: Sub8(a_, Read8(hl_, memory)); break;
+  case 0x97: Sub8(a_, *a_); break;
+
+  case 0x98: SubCarry8(a_, *b_); break;
+  case 0x99: SubCarry8(a_, *c_); break;
+  case 0x9a: SubCarry8(a_, *d_); break;
+  case 0x9b: SubCarry8(a_, *e_); break;
+  case 0x9c: SubCarry8(a_, *h_); break;
+  case 0x9d: SubCarry8(a_, *l_); break;
+  case 0x9e: SubCarry8(a_, Read8(hl_, memory)); break;
+  case 0x9f: SubCarry8(a_, *a_); break;
+
   case 0xa1:
     And(*c_);
     break;

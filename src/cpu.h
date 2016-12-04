@@ -117,9 +117,11 @@ class CPU {
   void Inc16(uint16_t *value);
   void Dec8(uint8_t *value);
   void Dec16(uint16_t *value);
-  void Add8(uint8_t *dest, uint8_t value);
+  void Add8(uint8_t *dest, uint8_t value);  // ADD
+  void AddCarry8(uint8_t *dest, uint8_t value);  // ADC
   void Add16(uint16_t *dest, uint16_t value);
-  void Sub8(uint8_t *dest, uint8_t value);
+  void Sub8(uint8_t *dest, uint8_t value);  // SUB
+  void SubCarry8(uint8_t *dest, uint8_t value);  // SBC
   void Cp(uint8_t value);
   void And(uint8_t value);
   void Or(uint8_t value);
