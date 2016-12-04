@@ -130,10 +130,8 @@ inline void CPU::Add8(uint8_t *dest, uint8_t value) {
 
 inline void CPU::AddCarry8(uint8_t *dest, uint8_t value) {
   uint8_t carry = (*f_ | CARRY_FLAG) >> 4;
-  // Do these as two separate operations to properly handle the case when value
-  // is 0xff and the carry flag is set.
-  Add8(dest, value);
-  Add8(dest, carry);
+  if (value == 0xff && carry > 0) FATALF("TODO: fix the ADC value overflow");
+  Add8(dest, value + carry);
 }
 
 inline void CPU::Add16(uint16_t *dest, uint16_t value) {
@@ -155,10 +153,8 @@ inline void CPU::Sub8(uint8_t *dest, uint8_t value) {
 
 inline void CPU::SubCarry8(uint8_t *dest, uint8_t value) {
   uint8_t carry = (*f_ | CARRY_FLAG) >> 4;
-  // Do these as two separate operations to properly handle the case when value
-  // is 0xff and the carry flag is set.
-  Sub8(dest, value);
-  Sub8(dest, carry);
+  if (value == 0xff && carry > 0) FATALF("TODO: fix the SBC value overflow");
+  Sub8(dest, value + carry);
 }
 
 // NOTE: this is a subtraction operation, but we throw away the result.
