@@ -7,6 +7,9 @@
 
 #include <SDL2/SDL.h>
 
+#include "input.h"
+
+
 namespace dgb {
 
 // Class representing the SDL window resource. The window is created when the
@@ -149,7 +152,7 @@ class Window {
 // destroyed after all of its members, due to the shared_ptr's.
 class WindowController {
  public:
-  WindowController() {
+  WindowController(std::shared_ptr<Input> input) : input_(input) {
     // TODO: do this only once?
     SDL_Init(SDL_INIT_VIDEO);
   }
@@ -162,9 +165,26 @@ class WindowController {
     windows_.push_back(window);
   }
 
+  void CheckInput() {
+    // Check keyboard state and update input.
+    const Uint8 *state = SDL_GetKeyboardState(NULL);
+    uint8_t buttons = 0;
+    if (state[SDL_SCANCODE_DOWN]) buttons |= BUTTON_DOWN;
+    if (state[SDL_SCANCODE_UP]) buttons |= BUTTON_UP;
+    if (state[SDL_SCANCODE_LEFT]) buttons |= BUTTON_LEFT;
+    if (state[SDL_SCANCODE_RIGHT]) buttons |= BUTTON_RIGHT;
+    if (state[SDL_SCANCODE_RETURN]) buttons |= BUTTON_START;
+    if (state[SDL_SCANCODE_TAB]) buttons |= BUTTON_SELECT;
+    if (state[SDL_SCANCODE_X]) buttons |= BUTTON_A;
+    if (state[SDL_SCANCODE_Z]) buttons |= BUTTON_B;
+
+    input_->SetButtons(buttons);
+  }
+
   bool Tick() {
     if (!running_) return false;
 
+    // TODO: interrupts
     while (SDL_PollEvent(&event_)) {
       // TODO: when stuck in a loop, several events appears to trigger some
       // invalid instructions (specifically, 0xbfff <- 0x39)
@@ -174,6 +194,8 @@ class WindowController {
           break;
       }
     }
+
+    CheckInput();
 
     if (!running_) return false;
 
@@ -187,6 +209,7 @@ class WindowController {
  private:
   bool running_ = true;
   std::vector<std::shared_ptr<Window>> windows_;
+  std::shared_ptr<Input> input_;
   SDL_Event event_;
 };
 

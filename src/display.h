@@ -65,8 +65,9 @@ class Display {
   const static int kVBlankCycleCount = 4560;
 
   Display(int width, int height, std::shared_ptr<Clock> clock,
-      std::shared_ptr<Interrupts> interrupts) : interrupts_(interrupts) {
-    window_controller_.reset(new WindowController());
+      std::shared_ptr<Interrupts> interrupts,
+      std::shared_ptr<WindowController> window_controller)
+      : interrupts_(interrupts), window_controller_(window_controller) {
     window_.reset(new Window(width, height, 256, 256));
     window_controller_->AddWindow(window_);
     tileset_window_.reset(new Window(256, 384, 128, 192));
@@ -283,8 +284,8 @@ class Display {
   int cycle_clock_ = 0;
 
   std::shared_ptr<Interrupts> interrupts_;
+  std::shared_ptr<WindowController> window_controller_;
 
-  std::unique_ptr<WindowController> window_controller_;
   std::shared_ptr<Window> window_;
   std::shared_ptr<Window> tileset_window_;
 };

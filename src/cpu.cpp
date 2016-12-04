@@ -4,7 +4,6 @@
 #include <functional>
 #include <iostream>
 
-#include "fixes.h"
 #include "logging.h"
 #include "memory.h"
 
@@ -33,13 +32,6 @@ inline uint16_t CPU::Read16(uint16_t address, Memory *memory) {
 
 inline void CPU::Write8(uint16_t address, uint8_t value, Memory *memory) {
   CHECK(memory != nullptr);
-
-  // A fix specific for Tetris.
-  // TODO: figure out root cause
-  if (FIX_tetris && address == 0xFF80) return;
-
-  //if (address >= 0xFF80 && address < 0xFFFF)
-  //  INFOF("Write to HIGHRAM (0x%04x) <- 0x%02x", address, value);
 
   switch (address) {
     case kInterruptRequestAddress:

@@ -13,6 +13,7 @@
 #include "flags.h"
 #include "logging.h"
 #include "memory.h"
+#include "window.h"
 
 
 using dgb::Cartridge;
@@ -22,6 +23,7 @@ using dgb::Display;
 using dgb::Input;
 using dgb::Interrupts;
 using dgb::Memory;
+using dgb::WindowController;
 
 struct {
   std::string filename;
@@ -48,14 +50,14 @@ int main(int argc, char *argv[]) {
 
   std::shared_ptr<Clock> clock(new Clock());
   std::shared_ptr<Interrupts> interrupts(new Interrupts());
-  std::shared_ptr<Display> display(new Display(512, 512, clock, interrupts));
-  std::shared_ptr<Cartridge> cartridge(new Cartridge(args.filename));
   std::shared_ptr<Input> input(new Input());
+  std::shared_ptr<WindowController> window_controller(
+      new WindowController(input));
+  std::shared_ptr<Display> display(
+      new Display(512, 512, clock, interrupts, window_controller));
+  std::shared_ptr<Cartridge> cartridge(new Cartridge(args.filename));
   Memory memory(cartridge, display, input);
   CPU cpu(clock, interrupts);
-
-  if (cartridge->Title().compare("TETRIS") == 0)
-    dgb::FIX_tetris = true;
 
   if ((*FLAG_bootloader).empty()) {
     cpu.set_pc(0x100);

@@ -193,8 +193,6 @@ class Memory {
       return;
     }
     if (offset == 0xff0f) {  // Interrupt Flag register.
-      ERRORF("NOT IMPLEMENTED: interrupts (0x%04x) <- 0x%02x",
-          offset & 0xffff, value & 0xff);
       interrupt_flag_ = value;
       return;
     }
