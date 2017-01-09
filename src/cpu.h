@@ -122,6 +122,7 @@ class CPU {
   void Add16(uint16_t *dest, uint16_t value);
   void Sub8(uint8_t *dest, uint8_t value);  // SUB
   void SubCarry8(uint8_t *dest, uint8_t value);  // SBC
+  void DecimalAdjust(uint8_t *dest);  // DAA
   void Cp(uint8_t value);
   void And(uint8_t value);
   void Or(uint8_t value);

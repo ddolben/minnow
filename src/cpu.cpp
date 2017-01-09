@@ -39,7 +39,7 @@ inline void CPU::Write8(uint16_t address, uint8_t value, Memory *memory) {
       break;
     case kInterruptEnableAddress:
       if ((value & (~(INTERRUPT_VBLANK | INTERRUPT_SERIAL))) != 0)
-        FATALF("Inimplemented interrupt enable: 0x%02x", value);
+        FATALF("Unimplemented interrupt enable: 0x%02x", value);
       interrupt_enable_ = value;
       break;
     default:
@@ -129,7 +129,7 @@ inline void CPU::Add8(uint8_t *dest, uint8_t value) {
 }
 
 inline void CPU::AddCarry8(uint8_t *dest, uint8_t value) {
-  uint8_t carry = (*f_ | CARRY_FLAG) >> 4;
+  uint8_t carry = (*f_ & CARRY_FLAG) >> 4;
   if (value == 0xff && carry > 0) FATALF("TODO: fix the ADC value overflow");
   Add8(dest, value + carry);
 }
@@ -155,6 +155,35 @@ inline void CPU::SubCarry8(uint8_t *dest, uint8_t value) {
   uint8_t carry = (*f_ | CARRY_FLAG) >> 4;
   if (value == 0xff && carry > 0) FATALF("TODO: fix the SBC value overflow");
   Sub8(dest, value + carry);
+}
+
+inline void CPU::DecimalAdjust(uint8_t *dest) {
+  bool new_carry = false;
+
+  if ((*f_ & SUBTRACT_FLAG) == 0) {  // Addition
+    if ((*dest & 0xf) > 0x9 || ((*f_ & HALF_CARRY_FLAG) != 0)) {
+      *dest += 6;
+    }
+    if ((*dest & 0xf0) > 0x90 || ((*f_ & CARRY_FLAG) != 0)) {
+      *dest += 0x60;
+      new_carry = true;
+    }
+  } else {  // Subtraction
+    if ((*dest & 0xf) > 0x9 || ((*f_ & HALF_CARRY_FLAG) != 0)) {
+      *dest -= 0x6;
+    }
+    if ((*dest & 0xf0) > 0x90 || ((*f_ & CARRY_FLAG) != 0)) {
+      *dest -= 0x60;
+    }
+
+    // In subtraction, carry flag stays the same.
+    new_carry = ((*f_ & CARRY_FLAG) != 0);
+  }
+
+  // TODO: check flag adjustments
+  *f_ = (*f_ & SUBTRACT_FLAG);
+  if (*dest == 0) *f_ |= ZERO_FLAG;
+  if (new_carry) *f_ |= CARRY_FLAG;
 }
 
 // NOTE: this is a subtraction operation, but we throw away the result.
@@ -440,6 +469,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     *h_ = Read8(pc_, memory);
     pc_++;
     break;
+  case 0x27: DecimalAdjust(a_); break;
   case 0x28: JumpRelative((*f_ & ZERO_FLAG) != 0, memory); break;
   case 0x2a:
     *a_ = Read8(hl_, memory);
@@ -681,6 +711,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
       pc_ = addr;
     }
     break;
+  case 0xd0: if ((*f_ & CARRY_FLAG) == 0) Return(memory); break;
   case 0xd1:
     Pop(&de_, memory);
     break;
@@ -691,6 +722,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     Sub8(a_, Read8(pc_, memory));
     pc_++;
     break;
+  case 0xd8: if ((*f_ & CARRY_FLAG) > 0) Return(memory); break;
   case 0xd9:
     Return(memory);
     ime_ = true;  // Re-enable interrupts.
