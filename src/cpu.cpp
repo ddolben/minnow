@@ -152,7 +152,7 @@ inline void CPU::Sub8(uint8_t *dest, uint8_t value) {
 }
 
 inline void CPU::SubCarry8(uint8_t *dest, uint8_t value) {
-  uint8_t carry = (*f_ | CARRY_FLAG) >> 4;
+  uint8_t carry = (*f_ & CARRY_FLAG) >> 4;
   if (value == 0xff && carry > 0) FATALF("TODO: fix the SBC value overflow");
   Sub8(dest, value + carry);
 }
@@ -485,7 +485,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     *a_ = ~(*a_);
     *f_ = SUBTRACT_FLAG | HALF_CARRY_FLAG;
     break;
-  case 0x30: JumpRelative((*f_ | CARRY_FLAG) == 0, memory); break;
+  case 0x30: JumpRelative((*f_ & CARRY_FLAG) == 0, memory); break;
   case 0x31:
     LoadData16(&sp_, memory);
     break;
@@ -511,7 +511,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x36:
     LoadData8ToMem(hl_, memory);
     break;
-  case 0x38: JumpRelative((*f_ | CARRY_FLAG) != 0, memory); break;
+  case 0x38: JumpRelative((*f_ & CARRY_FLAG) != 0, memory); break;
   case 0x3a:
     *a_ = Read8(hl_, memory);
     hl_--;
