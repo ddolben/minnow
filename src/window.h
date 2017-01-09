@@ -25,13 +25,14 @@ class Window {
   static const int kDisplayWidth = 160;
   static const int kDisplayHeight = 144;
 
-  Window(int width, int height, int texture_width, int texture_height)
+  Window(int width, int height, int texture_width, int texture_height,
+         const std::string &title)
       : width_(width), height_(height), texture_width_(texture_width),
-        texture_height_(texture_height) {
+        texture_height_(texture_height), title_(title) {
     // TODO: do this only once?
     //SDL_Init(SDL_INIT_VIDEO);
 
-    window_ = SDL_CreateWindow("DGB Emulator",
+    window_ = SDL_CreateWindow(title_.c_str(),
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width_, height_, 0);
     renderer_ = SDL_CreateRenderer(window_, -1, 0);
     texture_ = SDL_CreateTexture(renderer_,
@@ -126,6 +127,7 @@ class Window {
   int height_ = 0;
   int texture_width_ = 0;
   int texture_height_ = 0;
+  std::string title_;
 
   SDL_Rect rect_;
 

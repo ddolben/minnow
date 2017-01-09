@@ -68,10 +68,10 @@ class Display {
       std::shared_ptr<Interrupts> interrupts,
       std::shared_ptr<WindowController> window_controller)
       : interrupts_(interrupts), window_controller_(window_controller) {
-    window_.reset(new Window(width, height, 256, 256));
-    window_controller_->AddWindow(window_);
-    tileset_window_.reset(new Window(256, 384, 128, 192));
+    tileset_window_.reset(new Window(256, 384, 128, 192, "Minnow Tileset"));
     window_controller_->AddWindow(tileset_window_);
+    window_.reset(new Window(width, height, 256, 256, "Minnow Emulator"));
+    window_controller_->AddWindow(window_);
 
     clock->RegisterObserver([this](int cycles) {
       this->AdvanceClock(cycles);
