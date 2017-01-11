@@ -101,7 +101,7 @@ class Display {
 
   uint8_t Status() { return status_; }
   void SetStatus(uint8_t value) {
-    if ((value & 0xf8) != 0) {
+    if ((value & 0xb8) != 0) {
       FATALF("Unimplemented status bits: 0x%02x", value);
     }
     // Bits 0-2 are read-only.

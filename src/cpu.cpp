@@ -38,7 +38,11 @@ inline void CPU::Write8(uint16_t address, uint8_t value, Memory *memory) {
       interrupt_request_ = value;
       break;
     case kInterruptEnableAddress:
-      if ((value & (~(INTERRUPT_VBLANK | INTERRUPT_SERIAL))) != 0)
+      if ((value & (~(
+           INTERRUPT_VBLANK |
+           INTERRUPT_LCD_STAT |
+           INTERRUPT_TIMER |
+           INTERRUPT_SERIAL))) != 0)
         FATALF("Unimplemented interrupt enable: 0x%02x", value);
       interrupt_enable_ = value;
       break;
