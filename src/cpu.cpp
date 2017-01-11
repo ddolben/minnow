@@ -247,6 +247,16 @@ inline uint8_t CPU::JumpRelative(bool do_jump, Memory *memory) {
   return jump;
 }
 
+inline void CPU::CallA16(bool do_call, Memory *memory) {
+  uint16_t addr = Read16(pc_, memory);
+  pc_ += 2;
+  if (do_call) {
+    Write16(sp_ - 2, pc_, memory);
+    sp_ -= 2;
+    pc_ = addr;
+  }
+}
+
 inline void CPU::Return(Memory *memory) {
   uint16_t addr = Read16(sp_, memory);
   sp_ += 2;
@@ -706,15 +716,8 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
       return RunPrefix(code, memory);
     }
     break;  // Unreachable.
-  case 0xcd:
-    {
-      uint16_t addr = Read16(pc_, memory);
-      pc_ += 2;
-      Write16(sp_ - 2, pc_, memory);
-      sp_ -= 2;
-      pc_ = addr;
-    }
-    break;
+  case 0xcc: CallA16((*f_ & ZERO_FLAG) != 0, memory); break;
+  case 0xcd: CallA16(true, memory); break;
   case 0xd0: if ((*f_ & CARRY_FLAG) == 0) Return(memory); break;
   case 0xd1:
     Pop(&de_, memory);

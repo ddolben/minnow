@@ -131,6 +131,7 @@ class CPU {
   void Pop(uint16_t *dest, Memory *memory);
   void Jump(bool do_jump, Memory *memory);
   uint8_t JumpRelative(bool do_jump, Memory *memory);
+  void CallA16(bool do_call, Memory *memory);
   void Return(Memory *memory);
 
   uint8_t RotateLeft(uint8_t value);  // RLC
