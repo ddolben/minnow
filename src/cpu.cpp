@@ -749,6 +749,13 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     Return(memory);
     ime_ = true;  // Re-enable interrupts.
     break;
+  case 0xde:
+    {
+      uint8_t value = Read8(pc_, memory);
+      pc_++;
+      SubCarry8(a_, value);
+    }
+    break;
   case 0xe0:
     {
       uint8_t addr = Read8(pc_, memory);
@@ -848,11 +855,12 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   return true;
 }
 
-inline void CPU::ShiftLeft(uint8_t *value) {
+inline uint8_t CPU::ShiftLeft(uint8_t value) {
   // Shift bit 7 of *value into the carry flag position.
-  *f_ = CARRY_FLAG & (*value >> 3);
-  *value = (*value << 1);
-  if (*value == 0) *f_ |= ZERO_FLAG;
+  *f_ = CARRY_FLAG & (value >> 3);
+  uint8_t new_value = (value << 1);
+  if (new_value == 0) *f_ |= ZERO_FLAG;
+  return new_value;
 }
 
 inline void CPU::ShiftRight(uint8_t *value) {
@@ -905,7 +913,14 @@ bool CPU::RunPrefix(uint8_t code, Memory *memory) {
   case 0x16: Write8(hl_, RotateLeftThroughCarry(Read8(hl_, memory)), memory); break;
   case 0x17: *a_ = RotateLeftThroughCarry(*a_); break;
 
-  case 0x27: ShiftLeft(a_); break;
+  case 0x20: *b_ = ShiftLeft(*b_); break;
+  case 0x21: *c_ = ShiftLeft(*c_); break;
+  case 0x22: *d_ = ShiftLeft(*d_); break;
+  case 0x23: *e_ = ShiftLeft(*e_); break;
+  case 0x24: *h_ = ShiftLeft(*h_); break;
+  case 0x25: *l_ = ShiftLeft(*l_); break;
+  case 0x26: Write8(hl_, ShiftLeft(Read8(hl_, memory)), memory); break;
+  case 0x27: *a_ = ShiftLeft(*a_); break;
 
   case 0x30: *b_ = Swap(*b_); break;
   case 0x31: *c_ = Swap(*c_); break;
