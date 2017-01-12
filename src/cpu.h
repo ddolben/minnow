@@ -145,10 +145,10 @@ class CPU {
   void Halt() { halted_ = true; }
 
   uint8_t RotateLeft(uint8_t value);  // RLC
-  void RotateLeftThroughCarry(uint8_t *value);  // RL
+  uint8_t RotateLeftThroughCarry(uint8_t value);  // RL
   void ShiftLeft(uint8_t *value);  // SLA
   void ShiftRight(uint8_t *value);  // SRL
-  void Swap (uint8_t *dest, uint8_t value);
+  uint8_t Swap(uint8_t value);
   void TestBit(uint8_t value, unsigned int bit_index);
   uint8_t SetBit(uint8_t value, unsigned int bit_index);
   uint8_t ResetBit(uint8_t value, unsigned int bit_index);

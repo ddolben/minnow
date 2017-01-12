@@ -18,7 +18,6 @@ class Interrupts {
   }
 
   void SignalInterrupt(uint8_t type) {
-    printf("Interrupt: 0x%02x\n", type);
     if (handler_ != nullptr) {
       handler_(type);
     }

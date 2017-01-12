@@ -278,14 +278,15 @@ inline uint8_t CPU::RotateLeft(uint8_t value) {
 
 // Does a bitwise left rotation, using the carry bit as a 9th bit in the
 // operation.
-inline void CPU::RotateLeftThroughCarry(uint8_t *value) {
-  uint8_t left_bit = *value & 0x80;
+inline uint8_t CPU::RotateLeftThroughCarry(uint8_t value) {
+  uint8_t left_bit = value & 0x80;
   // Shift left, filling rightmost bit with carry flag's value.
-  *value = (*value << 1) | ((*f_ & CARRY_FLAG) >> 4);
+  uint8_t new_value = (value << 1) | ((*f_ & CARRY_FLAG) >> 4);
   // Set the carry flag to the old value's 8th bit, and set the zero flag if
   // the result was zero.
-  uint8_t zero_bit = (*value == 0) ? ZERO_FLAG : 0;
+  uint8_t zero_bit = (new_value == 0) ? ZERO_FLAG : 0;
   *f_ = (left_bit >> 3) | zero_bit;
+  return new_value;
 }
 
 bool CPU::ProcessInterrupts(Memory *memory) {
@@ -453,9 +454,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x16:
     LoadData8(d_, memory);
     break;
-  case 0x17:
-    RotateLeftThroughCarry(a_);
-    break;
+  case 0x17: *a_ = RotateLeftThroughCarry(*a_); break;
   case 0x18:
     JumpRelative(true, memory);
     break;
@@ -600,7 +599,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x73: Write8(hl_, *e_, memory); break;
   case 0x74: Write8(hl_, *h_, memory); break;
   case 0x75: Write8(hl_, *l_, memory); break;
-  case 0x76: printf("Halt\n"); Halt(); break;
+  case 0x76: Halt(); break;
   case 0x77: Write8(hl_, *a_, memory); break;
 
   case 0x78: *a_ = *b_; break;
@@ -857,9 +856,10 @@ inline void CPU::ShiftRight(uint8_t *value) {
   if (*value == 0) *f_ |= ZERO_FLAG;
 }
 
-inline void CPU::Swap(uint8_t *dest, uint8_t value) {
-  *dest = (value >> 4) | (value << 4);
-  *f_ = (*dest == 0) ? ZERO_FLAG : 0;
+inline uint8_t CPU::Swap(uint8_t value) {
+  uint8_t new_value = (value >> 4) | (value << 4);
+  *f_ = (new_value == 0) ? ZERO_FLAG : 0;
+  return new_value;
 }
 
 inline void CPU::TestBit(uint8_t value, unsigned int bit_index) {
@@ -890,10 +890,26 @@ bool CPU::RunPrefix(uint8_t code, Memory *memory) {
   case 0x06: Write8(hl_, RotateLeft(Read8(hl_, memory)), memory); break;
   case 0x07: *a_ = RotateLeft(*a_); break;
 
-  case 0x11: RotateLeftThroughCarry(c_); break;
+  case 0x10: *b_ = RotateLeftThroughCarry(*b_); break;
+  case 0x11: *c_ = RotateLeftThroughCarry(*c_); break;
+  case 0x12: *d_ = RotateLeftThroughCarry(*d_); break;
+  case 0x13: *e_ = RotateLeftThroughCarry(*e_); break;
+  case 0x14: *h_ = RotateLeftThroughCarry(*h_); break;
+  case 0x15: *l_ = RotateLeftThroughCarry(*l_); break;
+  case 0x16: Write8(hl_, RotateLeftThroughCarry(Read8(hl_, memory)), memory); break;
+  case 0x17: *a_ = RotateLeftThroughCarry(*a_); break;
+
   case 0x27: ShiftLeft(a_); break;
-  case 0x33: Swap(e_, *e_); break;
-  case 0x37: Swap(a_, *a_); break;
+
+  case 0x30: *b_ = Swap(*b_); break;
+  case 0x31: *c_ = Swap(*c_); break;
+  case 0x32: *d_ = Swap(*d_); break;
+  case 0x33: *e_ = Swap(*e_); break;
+  case 0x34: *h_ = Swap(*h_); break;
+  case 0x35: *l_ = Swap(*l_); break;
+  case 0x36: Write8(hl_, Swap(Read8(hl_, memory)), memory); break;
+  case 0x37: *a_ = Swap(*a_); break;
+
   case 0x3f: ShiftRight(a_); break;
 
   case 0x40: TestBit(*b_, 0); break;
