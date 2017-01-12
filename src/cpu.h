@@ -142,6 +142,7 @@ class CPU {
   void CallA16(bool do_call, Memory *memory);
   void Return(Memory *memory);
 
+  void CCF();
   void Halt() { halted_ = true; }
 
   uint8_t RotateLeft(uint8_t value);  // RLC

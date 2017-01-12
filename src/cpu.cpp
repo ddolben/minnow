@@ -263,6 +263,13 @@ inline void CPU::Return(Memory *memory) {
   pc_ = addr;
 }
 
+inline void CPU::CCF() {
+  // Complement the carry bit.
+  *f_ ^= CARRY_FLAG;
+  // Reset the subtract and half-carry bits.
+  *f_ &= ~(SUBTRACT_FLAG | HALF_CARRY_FLAG);
+}
+
 // Does a bitwise left rotation, putting the old bit 7 in the carry flag.
 inline uint8_t CPU::RotateLeft(uint8_t value) {
   uint8_t left_bit = value & 0x80;
@@ -535,9 +542,8 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x3b: Dec16(&sp_); break;
   case 0x3c: Inc8(a_); break;
   case 0x3d: Dec8(a_); break;
-  case 0x3e:
-    LoadData8(a_, memory);
-    break;
+  case 0x3e: LoadData8(a_, memory); break;
+  case 0x3f: CCF(); break;
 
   case 0x40: *b_ = *b_; break;
   case 0x41: *b_ = *c_; break;
