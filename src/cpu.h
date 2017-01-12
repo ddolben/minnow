@@ -66,9 +66,16 @@ class CPU {
   void Loop(Memory *memory) {
     int cycle_count;
     while (IsRunning()) {
-      if (!RunOp(memory, &cycle_count)) {
-        debug_ = true;
+      if (halted_) {
+        // If the CPU is halted, make sure we continue advancing the clock.
+        cycle_count = 1;
+      } else {
+        if (!RunOp(memory, &cycle_count)) {
+          debug_ = true;
+        }
       }
+
+      // TODO: timers
       if (ime_) {
         if (!ProcessInterrupts(memory)) {
           break;
@@ -105,6 +112,7 @@ class CPU {
   std::thread thread_;
   std::mutex mutex_;
   bool is_running_ = true;
+  bool halted_ = false;
   bool debug_ = false;
   int64_t breakpoint_ = -1;
 
@@ -133,6 +141,8 @@ class CPU {
   uint8_t JumpRelative(bool do_jump, Memory *memory);
   void CallA16(bool do_call, Memory *memory);
   void Return(Memory *memory);
+
+  void Halt() { halted_ = true; }
 
   uint8_t RotateLeft(uint8_t value);  // RLC
   void RotateLeftThroughCarry(uint8_t *value);  // RL

@@ -83,14 +83,21 @@ class Display {
 
     // TODO: update LCDSTAT mode/coincidence values
     // TODO: LCDSTAT interrupts
+    // TODO: check LYC values
     int diff = cycle_clock_ - kVBlankStart;
     if (diff >= 0 && diff < cycles) {
       interrupts_->SignalInterrupt(INTERRUPT_VBLANK);
     }
   }
 
+  // LCDC Y-coordinate value.
   uint8_t LCDCY() {
     return cycle_clock_ / kLineCycleCount;
+  }
+
+  // LY Compare value.
+  void SetLYC(uint8_t value) {
+    lyc_ = value;
   }
 
   uint8_t Control() { return control_; }
@@ -186,6 +193,8 @@ class Display {
  private:
   uint8_t control_ = 0;
   uint8_t status_ = 0;
+  // LY Compare value.
+  uint8_t lyc_ = 0;
 
   uint8_t palette_ = 0;
   uint8_t object_palette_0_ = 0;

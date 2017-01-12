@@ -219,6 +219,8 @@ class Memory {
         display_->SetScrollY(value);
       } else if (offset == 0xff43) {
         display_->SetScrollX(value);
+      } else if (offset == 0xff45) {
+        display_->SetLYC(value);
       } else if (offset == 0xff47) {
         display_->SetPalette(value);
       } else if (offset == 0xff48) {

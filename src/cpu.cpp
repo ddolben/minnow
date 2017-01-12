@@ -301,6 +301,8 @@ bool CPU::ProcessInterrupts(Memory *memory) {
       ime_ = false;
       // Zero out the IR bit for the interrupt we're handling.
       Write8(0xFF0F, interrupt_request & (~(1 << i)), memory);
+      // Set halt to false, so we resume CPU execution if halted.
+      halted_ = false;
       // Break out of this loop and allow the CPU to execute the interrupt
       // handler. Since we've seroed out the IR bit for the interrupt we're
       // executing, as soon as RETI gets called, ProcessInterrupts will run
@@ -417,6 +419,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x01:
     LoadData16(&bc_, memory);
     break;
+  case 0x02: Write8(bc_, *a_, memory); break;
   case 0x03: Inc16(&bc_); break;
   case 0x04: Inc8(b_); break;
   case 0x05: Dec8(b_); break;
@@ -597,7 +600,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x73: Write8(hl_, *e_, memory); break;
   case 0x74: Write8(hl_, *h_, memory); break;
   case 0x75: Write8(hl_, *l_, memory); break;
-  // TODO: HALT
+  case 0x76: printf("Halt\n"); Halt(); break;
   case 0x77: Write8(hl_, *a_, memory); break;
 
   case 0x78: *a_ = *b_; break;
@@ -645,18 +648,23 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x9e: SubCarry8(a_, Read8(hl_, memory)); break;
   case 0x9f: SubCarry8(a_, *a_); break;
 
-  case 0xa1:
-    And(*c_);
-    break;
-  case 0xa7:
-    And(*a_);
-    break;
-  case 0xa9:
-    Xor(*c_);
-    break;
-  case 0xaf:
-    Xor(*a_);
-    break;
+  case 0xa0: And(*b_); break;
+  case 0xa1: And(*c_); break;
+  case 0xa2: And(*d_); break;
+  case 0xa3: And(*e_); break;
+  case 0xa4: And(*h_); break;
+  case 0xa5: And(*l_); break;
+  case 0xa6: And(Read8(hl_, memory)); break;
+  case 0xa7: And(*a_); break;
+
+  case 0xa8: Xor(*b_); break;
+  case 0xa9: Xor(*c_); break;
+  case 0xaa: Xor(*d_); break;
+  case 0xab: Xor(*e_); break;
+  case 0xac: Xor(*h_); break;
+  case 0xad: Xor(*l_); break;
+  case 0xae: Xor(Read8(hl_, memory)); break;
+  case 0xaf: Xor(*a_); break;
 
   case 0xb0: Or(*b_); break;
   case 0xb1: Or(*c_); break;
@@ -691,6 +699,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
       pc_ = addr;
     }
     break;
+  case 0xc4: CallA16((*f_ & ZERO_FLAG) == 0 , memory); break;
   case 0xc5:
     Push(bc_, memory);
     break;
@@ -722,6 +731,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0xd1:
     Pop(&de_, memory);
     break;
+  case 0xd2: Jump((*f_ & CARRY_FLAG) == 0, memory); break;
   case 0xd5:
     Push(de_, memory);
     break;
