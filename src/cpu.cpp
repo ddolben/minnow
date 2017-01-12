@@ -296,6 +296,17 @@ inline uint8_t CPU::RotateLeftThroughCarry(uint8_t value) {
   return new_value;
 }
 
+inline uint8_t CPU::RotateRightThroughCarry(uint8_t value) {
+  uint8_t right_bit = value & 0x01;
+  // Shift right, filling leftmost bit with carry flag's value.
+  uint8_t new_value = (value >> 1) | ((*f_ & CARRY_FLAG) >> 3);
+  // Set the carry flag to the old value's 0th bit, and set the zero flag if
+  // the result was zero.
+  uint8_t zero_bit = (new_value == 0) ? ZERO_FLAG : 0;
+  *f_ = (right_bit << 4) | zero_bit;
+  return new_value;
+}
+
 bool CPU::ProcessInterrupts(Memory *memory) {
   // TODO: move these registers into the CPU class
   uint8_t interrupt_request = Read8(0xFF0F, memory);
@@ -912,6 +923,15 @@ bool CPU::RunPrefix(uint8_t code, Memory *memory) {
   case 0x15: *l_ = RotateLeftThroughCarry(*l_); break;
   case 0x16: Write8(hl_, RotateLeftThroughCarry(Read8(hl_, memory)), memory); break;
   case 0x17: *a_ = RotateLeftThroughCarry(*a_); break;
+
+  case 0x18: *b_ = RotateRightThroughCarry(*b_); break;
+  case 0x19: *c_ = RotateRightThroughCarry(*c_); break;
+  case 0x1a: *d_ = RotateRightThroughCarry(*d_); break;
+  case 0x1b: *e_ = RotateRightThroughCarry(*e_); break;
+  case 0x1c: *h_ = RotateRightThroughCarry(*h_); break;
+  case 0x1d: *l_ = RotateRightThroughCarry(*l_); break;
+  case 0x1e: Write8(hl_, RotateRightThroughCarry(Read8(hl_, memory)), memory); break;
+  case 0x1f: *a_ = RotateRightThroughCarry(*a_); break;
 
   case 0x20: *b_ = ShiftLeft(*b_); break;
   case 0x21: *c_ = ShiftLeft(*c_); break;

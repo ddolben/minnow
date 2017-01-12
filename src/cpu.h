@@ -147,6 +147,7 @@ class CPU {
 
   uint8_t RotateLeft(uint8_t value);  // RLC
   uint8_t RotateLeftThroughCarry(uint8_t value);  // RL
+  uint8_t RotateRightThroughCarry(uint8_t value);  // RR
   uint8_t ShiftLeft(uint8_t value);  // SLA
   void ShiftRight(uint8_t *value);  // SRL
   uint8_t Swap(uint8_t value);
