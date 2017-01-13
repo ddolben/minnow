@@ -56,7 +56,8 @@ int main(int argc, char *argv[]) {
   std::shared_ptr<WindowController> window_controller(
       new WindowController(input));
   std::shared_ptr<Display> display(
-      new Display(512, 512, clock, interrupts, window_controller));
+      new Display(Display::kDisplayWidth*2, Display::kDisplayHeight*2,
+                  clock, interrupts, window_controller));
   std::shared_ptr<Cartridge> cartridge(new Cartridge(args.filename));
   Memory memory(cartridge, display, input, timers);
   CPU cpu(clock, interrupts);

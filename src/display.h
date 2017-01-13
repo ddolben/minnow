@@ -50,10 +50,27 @@ class Display {
   // Bit 1 - OBJ (Sprite) Display Enable    (0=Off, 1=On)
   // Bit 0 - BG Display (for CGB see below) (0=Off, 1=On)
   enum ControlMask {
+    WINDOW_TILE_MAP_SELECT_BIT = 0x40,
+    WINDOW_ENABLE_BIT = 0x20,
     TILE_DATA_SELECT_BIT = 0x10,
     BG_TILE_MAP_SELECT_BIT = 0x08,
     OBJ_ENABLE_BIT = 0x02,
     BG_ENABLE_BIT = 0x01
+  };
+
+	// Bit 6 - LYC=LY Coincidence Interrupt (1=Enable) (Read/Write)
+  // Bit 5 - Mode 2 OAM Interrupt         (1=Enable) (Read/Write)
+  // Bit 4 - Mode 1 V-Blank Interrupt     (1=Enable) (Read/Write)
+  // Bit 3 - Mode 0 H-Blank Interrupt     (1=Enable) (Read/Write)
+  // Bit 2 - Coincidence Flag  (0:LYC<>LY, 1:LYC=LY) (Read Only)
+  // Bit 1-0 - Mode Flag       (Mode 0-3, see below) (Read Only)
+  // 					0: During H-Blank
+  // 					1: During V-Blank
+  // 					2: During Searching OAM-RAM
+  // 					3: During Transfering Data to LCD Driver
+  enum StatusMask {
+    COINCIDENCE_INTERRUPT_BIT = 0x40,
+    COINCIDENCE_FLAG_BIT = 0x04,
   };
 
   const static uint16_t kVRAMSize = 8192;
@@ -64,13 +81,17 @@ class Display {
   const static int kVBlankStart = kVisibleLineCount * kLineCycleCount;
   const static int kVBlankCycleCount = 4560;
 
+  static const int kDisplayWidth = 160;
+  static const int kDisplayHeight = 144;
+
   Display(int width, int height, std::shared_ptr<Clock> clock,
       std::shared_ptr<Interrupts> interrupts,
       std::shared_ptr<WindowController> window_controller)
       : interrupts_(interrupts), window_controller_(window_controller) {
     tileset_window_.reset(new Window(256, 384, 128, 192, "Minnow Tileset"));
     window_controller_->AddWindow(tileset_window_);
-    window_.reset(new Window(width, height, 256, 256, "Minnow Emulator"));
+    window_.reset(new Window(
+          width, height, kDisplayWidth, kDisplayHeight, "Minnow Emulator"));
     window_controller_->AddWindow(window_);
 
     clock->RegisterObserver([this](int cycles) {
@@ -83,7 +104,25 @@ class Display {
 
     // TODO: update LCDSTAT mode/coincidence values
     // TODO: LCDSTAT interrupts
-    // TODO: check LYC values
+
+    // Check to see if LY == LYC.
+    if (LCDCY() == lyc_) {
+      status_ |= COINCIDENCE_FLAG_BIT;
+      // If the coincidence interrupt is enabled, signal an LCD_STAT interrupt.
+      if ((status_ & COINCIDENCE_INTERRUPT_BIT) != 0) {
+        interrupts_->SignalInterrupt(INTERRUPT_LCD_STAT);
+      }
+    }
+    // TODO: should I unset the coincidence bit?
+
+    // Each time the LCD Y-coordinate advances, render the next line to the
+    // display.
+    static int y_compare = 0;
+    if (LCDCY() != y_compare) {
+      y_compare = LCDCY();
+      RenderScanline();
+    }
+
     int diff = cycle_clock_ - kVBlankStart;
     if (diff >= 0 && diff < cycles) {
       interrupts_->SignalInterrupt(INTERRUPT_VBLANK);
@@ -103,12 +142,15 @@ class Display {
   uint8_t Control() { return control_; }
   void SetControl(uint8_t value) {
     // TODO: turn off display when bit 7 goes to 0, but only during VBLANK
+    if ((value & WINDOW_ENABLE_BIT) != 0) {
+      FATALF("Unimplemented: window enable");
+    }
     control_ = value;
   }
 
   uint8_t Status() { return status_; }
   void SetStatus(uint8_t value) {
-    if ((value & 0xb8) != 0) {
+    if ((value & (~(COINCIDENCE_INTERRUPT_BIT))) != 0) {
       FATALF("Unimplemented status bits: 0x%02x", value);
     }
     // Bits 0-2 are read-only.
@@ -191,6 +233,10 @@ class Display {
   void Loop();
 
  private:
+  // Renders the current scanline (determined by LCDCY()) and writes it out to
+  // the window's framebuffer.
+  void RenderScanline();
+
   uint8_t control_ = 0;
   uint8_t status_ = 0;
   // LY Compare value.

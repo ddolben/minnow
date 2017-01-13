@@ -22,9 +22,6 @@ namespace dgb {
 // intricacies about which thread is the UI thread.
 class Window {
  public:
-  static const int kDisplayWidth = 160;
-  static const int kDisplayHeight = 144;
-
   Window(int width, int height, int texture_width, int texture_height,
          const std::string &title)
       : width_(width), height_(height), texture_width_(texture_width),
@@ -107,16 +104,6 @@ class Window {
 
     SDL_RenderClear(renderer_);
     SDL_RenderCopy(renderer_, texture_, NULL, &rect_);
-
-    int frame_x = scroll_x_ * 2;
-    int frame_y = scroll_y_ * 2;
-    SDL_Rect rectToDraw = {
-      frame_x,
-      frame_y,
-      kDisplayWidth*2,
-      kDisplayHeight*2};
-    SDL_SetRenderDrawColor(renderer_, 255, 0, 0, 255);
-    SDL_RenderDrawRect(renderer_, &rectToDraw);
 
     SDL_RenderPresent(renderer_);
   }

@@ -7,29 +7,7 @@ void Display::Loop() {
   window_->SetRenderFunc([this]{
     // TODO: check if LCD is on
 
-    // Render background tile map.
-    if ((control_ & BG_ENABLE_BIT) != 0) {
-      for (int ty = 0; ty < 32; ++ty) {
-        for (int tx = 0; tx < 32; ++tx) {
-          Tile *tile = this->GetTile(tx, ty);
-
-          for (int y = 0; y < 8; ++y) {
-            for (int x = 0; x < 8; ++x) {
-              // TODO: this belongs in a function
-              uint8_t *b = tile->data + (y*2);
-              uint8_t value = ((*b >> (7-x)) & 0x1) | (((*(b+1) >> (7-x)) & 0x1) << 1);
-              this->window_->SetPixel(
-                  (tx*8 + x),
-                  (ty*8 + y),
-                  this->Color(value));
-            }
-          }
-        }
-      }
-    }
-
-    // TODO: render window
-
+    // TODO: move sprites into RenderScanline.
     // Render sprites.
     if ((control_ & OBJ_ENABLE_BIT) != 0) {
       for (int i = 0; i < 40; ++i) {
@@ -79,6 +57,41 @@ void Display::Loop() {
 
   // Loop.
   while (window_controller_->Tick()) {}
+}
+
+void Display::RenderScanline() {
+  // TODO: check if LCD is on
+
+  uint8_t line_index = LCDCY();
+  if (line_index > kDisplayHeight) return;
+
+  // The background tile map dimensions, in pixels.
+  const int kBackgroundMapWidth = 256;
+  const int kBackgroundMapHeight = 256;
+
+  // Render background tiles.
+  if ((control_ & BG_ENABLE_BIT) != 0) {
+    int offset_x = ScrollX();
+    int offset_y = ScrollY();
+
+    // Wrap BG tile map.
+    int y = (offset_y + line_index) % kBackgroundMapHeight;
+    int tile_y = y % 8;
+
+    int x, tile_x;
+    for (int ix = 0; ix < kDisplayWidth; ++ix) {
+      // Wrap BG tile map.
+      x = (offset_x + ix) % kBackgroundMapWidth;
+      tile_x = x % 8;
+
+      // TODO: factor out into a function
+      Tile *tile = this->GetTile(x/8, y/8);
+      uint8_t *b = tile->data + (tile_y*2);
+      uint8_t value =
+        ((*b >> (7-tile_x)) & 0x1) | (((*(b+1) >> (7-tile_x)) & 0x1) << 1);
+      this->window_->SetPixel(ix, line_index, this->Color(value));
+    }
+  }
 }
 
 }  // namespace dgb
