@@ -73,6 +73,18 @@ class Display {
     COINCIDENCE_FLAG_BIT = 0x04,
   };
 
+	// Bit7   OBJ-to-BG Priority (0=OBJ Above BG, 1=OBJ Behind BG color 1-3)
+  //        (Used for both BG and Window. BG color 0 is always behind OBJ)
+  // Bit6   Y flip          (0=Normal, 1=Vertically mirrored)
+  // Bit5   X flip          (0=Normal, 1=Horizontally mirrored)
+  // Bit4   Palette number  **Non CGB Mode Only** (0=OBP0, 1=OBP1)
+  // Bit3   Tile VRAM-Bank  **CGB Mode Only**     (0=Bank 0, 1=Bank 1)
+  // Bit2-0 Palette number  **CGB Mode Only**     (OBP0-7)
+  enum SpriteAttributeMask {
+    SPRITE_Y_FLIP_BIT = 0x40,
+    SPRITE_X_FLIP_BIT = 0x20
+  };
+
   const static uint16_t kVRAMSize = 8192;
   const static uint16_t kSpriteAttributeTableSize = 0xA0;
   const static int kCycleLength = 70224;
