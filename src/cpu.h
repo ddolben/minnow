@@ -97,6 +97,16 @@ class CPU {
   uint8_t pc() { return pc_; }
 
   void set_breakpoint(uint16_t value) { breakpoint_ = value; }
+  void set_breakpoint_opcode(int16_t value) { breakpoint_opcode_ = value; }
+
+  void set_debug(bool value) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    debug_ = value;
+  }
+  bool debug() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return debug_;
+  }
 
  private:
   enum FlagsMask {
@@ -114,7 +124,15 @@ class CPU {
   bool is_running_ = true;
   bool halted_ = false;
   bool debug_ = false;
+  // Memory address at which to break.
   int64_t breakpoint_ = -1;
+  // Opcode at which to break (it's actually just a uint8, but expanding to
+  // 16-bit signed allows for negative numbers to disable it).
+  int16_t breakpoint_opcode_ = -1;
+  // Memory write address at which to break (actually uint16).
+  int32_t breakpoint_write_ = -1;
+  // Memory read address at which to break (actually uint16).
+  int32_t breakpoint_read_ = -1;
 
   // Op helpers.
   uint8_t LoadData8(uint8_t *dest, Memory *memory);

@@ -7,6 +7,7 @@
 
 #include <SDL2/SDL.h>
 
+#include "event_dispatch.h"
 #include "input.h"
 
 
@@ -141,7 +142,9 @@ class Window {
 // destroyed after all of its members, due to the shared_ptr's.
 class WindowController {
  public:
-  WindowController(std::shared_ptr<Input> input) : input_(input) {
+  WindowController(
+      std::shared_ptr<Input> input, std::shared_ptr<EventDispatch> dispatch)
+    : input_(input), dispatch_(dispatch) {
     // TODO: do this only once?
     SDL_Init(SDL_INIT_VIDEO);
   }
@@ -178,6 +181,11 @@ class WindowController {
       // TODO: when stuck in a loop, several events appears to trigger some
       // invalid instructions (specifically, 0xbfff <- 0x39)
       switch (event_.type) {
+        case SDL_KEYUP:
+          if (event_.key.keysym.scancode == SDL_SCANCODE_ESCAPE) {
+            dispatch_->FireEvent(Event(EVENT_START_DEBUGGER));
+          }
+          break;
         case SDL_QUIT:
           running_ = false;
           break;
@@ -199,6 +207,7 @@ class WindowController {
   bool running_ = true;
   std::vector<std::shared_ptr<Window>> windows_;
   std::shared_ptr<Input> input_;
+  std::shared_ptr<EventDispatch> dispatch_;
   SDL_Event event_;
 };
 
