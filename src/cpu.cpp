@@ -279,7 +279,7 @@ inline void CPU::CCF() {
 // Does a bitwise left rotation, putting the old bit 7 in the carry flag.
 inline uint8_t CPU::RotateLeft(uint8_t value) {
   uint8_t left_bit = value & 0x80;
-  // Shift left, filling rightmost bit with carry flag's value.
+  // Shift left, filling rightmost bit with the old bit 7 value.
   uint8_t new_value = (value << 1) | (left_bit >> 7);
   // Set the carry flag to the old value's 8th bit, and set the zero flag if
   // the result was zero.
@@ -299,6 +299,19 @@ inline uint8_t CPU::RotateLeftThroughCarry(uint8_t value) {
   // the result was zero.
   uint8_t zero_bit = (new_value == 0) ? ZERO_FLAG : 0;
   *f_ = (left_bit >> 3) | zero_bit;
+  return new_value;
+}
+
+// Does a bitwise right rotation, putting the old bit 0 in the carry flag.
+inline uint8_t CPU::RotateRight(uint8_t value) {
+  uint8_t right_bit = value & 0x01;
+  // Shift right, filling leftmost bit with the old bit 0 value.
+  uint8_t new_value = (value >> 1) | (right_bit << 7);
+  // Set the carry flag to the old value's 0th bit, and set the zero flag if
+  // the result was zero.
+  uint8_t zero_bit = (new_value == 0) ? ZERO_FLAG : 0;
+  *f_ = (right_bit << 4) | zero_bit;
+
   return new_value;
 }
 
@@ -479,6 +492,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x0e:
     LoadData8(c_, memory);
     break;
+  case 0x0f: *a_ = RotateRight(*a_); break;
   case 0x11:
     LoadData16(&de_, memory);
     break;
@@ -507,6 +521,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x1e:
     LoadData8(e_, memory);
     break;
+  case 0x1f: *a_ = RotateRightThroughCarry(*a_); break;
   case 0x20: JumpRelative((*f_ & ZERO_FLAG) == 0, memory); break;
   case 0x21:
     LoadData16(&hl_, memory);
@@ -933,6 +948,15 @@ bool CPU::RunPrefix(uint8_t code, Memory *memory) {
   case 0x05: *l_ = RotateLeft(*l_); break;
   case 0x06: Write8(hl_, RotateLeft(Read8(hl_, memory)), memory); break;
   case 0x07: *a_ = RotateLeft(*a_); break;
+
+  case 0x08: *b_ = RotateRight(*b_); break;
+  case 0x09: *c_ = RotateRight(*c_); break;
+  case 0x0a: *d_ = RotateRight(*d_); break;
+  case 0x0b: *e_ = RotateRight(*e_); break;
+  case 0x0c: *h_ = RotateRight(*h_); break;
+  case 0x0d: *l_ = RotateRight(*l_); break;
+  case 0x0e: Write8(hl_, RotateRight(Read8(hl_, memory)), memory); break;
+  case 0x0f: *a_ = RotateRight(*a_); break;
 
   case 0x10: *b_ = RotateLeftThroughCarry(*b_); break;
   case 0x11: *c_ = RotateLeftThroughCarry(*c_); break;
