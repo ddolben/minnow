@@ -3,42 +3,6 @@
 namespace dgb {
 
 void Display::Loop() {
-  // Draw the tilemap into the main window.
-  window_->SetRenderFunc([this]{
-    // TODO: check if LCD is on
-
-    // TODO: move sprites into RenderScanline.
-    // Render sprites.
-    if ((control_ & OBJ_ENABLE_BIT) != 0) {
-      for (int i = 0; i < 40; ++i) {
-        Sprite *sprite =
-            reinterpret_cast<Sprite*>(this->sprite_attributes_ + (4*i));
-        if (sprite->y_pos() == 0 || sprite->y_pos() >= 160 ||
-            sprite->x_pos() == 0 || sprite->x_pos() >= 168) {
-          continue;
-        }
-        Tile *tile = reinterpret_cast<struct Tile*>(
-            this->vram_ + (sprite->tile_id() * 16));
-        int x, y;
-        for (int iy = 0; iy < 8; ++iy) {
-          y = ((sprite->attributes() & SPRITE_Y_FLIP_BIT) == 0) ? iy : (7-iy);
-          for (int ix = 0; ix < 8; ++ix) {
-            x = ((sprite->attributes() & SPRITE_X_FLIP_BIT) == 0) ? ix : (7-ix);
-            uint8_t *b = tile->data + (y*2);
-            uint8_t value =
-                ((*b >> (7-x)) & 0x1) | (((*(b+1) >> (7-x)) & 0x1) << 1);
-            // TODO: use sprite palettes instead
-            // TODO: some colors are transparent
-            this->window_->SetPixel(
-                (sprite->x_pos() + ix - 8),
-                (sprite->y_pos() + iy - 16),
-                this->Color(value));
-          }
-        }
-      }
-    }
-  });
-
   // Draw the tileset out to the second window.
   tileset_window_->SetRenderFunc([this]{
     int tx, ty;
@@ -95,6 +59,37 @@ void Display::RenderScanline() {
       uint8_t value =
         ((*b >> (7-tile_x)) & 0x1) | (((*(b+1) >> (7-tile_x)) & 0x1) << 1);
       this->window_->SetPixel(ix, line_index, this->Color(value));
+    }
+  }
+
+  // Render sprites.
+  if ((control_ & OBJ_ENABLE_BIT) != 0) {
+    for (int i = 0; i < 40; ++i) {
+      Sprite *sprite =
+          reinterpret_cast<Sprite*>(this->sprite_attributes_ + (4*i));
+      // Check if the sprite overlaps with this scanline.
+      if (sprite->y_pos() <= line_index || line_index < sprite->y_pos() - 16 ||
+          sprite->x_pos() == 0 || sprite->x_pos() >= 168) {
+        continue;
+      }
+      Tile *tile = reinterpret_cast<struct Tile*>(
+          this->vram_ + (sprite->tile_id() * 16));
+      int x, y;
+      int iy = line_index - (sprite->y_pos() - 16);
+      if (iy > 7) continue;
+      int y = ((sprite->attributes() & SPRITE_Y_FLIP_BIT) == 0) ? iy : (7-iy);
+      for (int ix = 0; ix < 8; ++ix) {
+        x = ((sprite->attributes() & SPRITE_X_FLIP_BIT) == 0) ? ix : (7-ix);
+        uint8_t *b = tile->data + (y*2);
+        uint8_t value =
+            ((*b >> (7-x)) & 0x1) | (((*(b+1) >> (7-x)) & 0x1) << 1);
+        // TODO: use sprite palettes instead
+        // TODO: some colors are transparent
+        this->window_->SetPixel(
+            (sprite->x_pos() + ix - 8),
+            (sprite->y_pos() + iy - 16),
+            this->Color(value));
+      }
     }
   }
 }
