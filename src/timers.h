@@ -39,26 +39,31 @@ class Timers {
   }
 
   void set_modulo(uint8_t value) { modulo_ = value; }
-  void set_control(uint8_t value) { control_ = value; }
+  void set_control(uint8_t value) {
+    control_ = value;
+    switch (control_ & 0x3) {
+      case 0x3: resolution_ = kClockSpeed / 16384;
+      case 0x2: resolution_ = kClockSpeed / 262144;
+      case 0x1: resolution_ = kClockSpeed / 65536;
+      default: resolution_ = kClockSpeed / 4096;
+    }
+  }
 
  private:
-  int Resolution() {
-    // TODO: select based on control value
-    return 4096;
-  }
+  const uint64_t kClockSpeed = 4194304;
 
   void AdvanceClock(int cycles) {
     if ((control_ & TIMER_ENABLE_BIT) == 0) return;
 
     cycles_accumulator_ += cycles;
-    if (cycles_accumulator_ > Resolution()) {
+    if (cycles_accumulator_ > resolution_) {
       if (counter_ == 0xFF) {
         counter_ = modulo_;
         interrupts_->SignalInterrupt(INTERRUPT_TIMER);
       } else {
         counter_++;
       }
-      cycles_accumulator_ -= Resolution();
+      cycles_accumulator_ -= resolution_;
     }
   }
 
@@ -66,6 +71,7 @@ class Timers {
   uint8_t control_ = 0;  // 0xFF07
 
   uint8_t counter_ = 0;
+  uint64_t resolution_ = 1;
   uint64_t cycles_accumulator_ = 0;
 
   std::chrono::high_resolution_clock::time_point last_reset_ =
