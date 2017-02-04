@@ -143,33 +143,20 @@ class Memory {
   }
 
   uint8_t ReadFromDevice(uint16_t offset) {
-    if (offset == 0xff00) {
-      return input_->Joypad();
-    }
-    if (offset == 0xff04) {
-      return timers_->Divider();
-    }
-    if (offset == 0xff0f) {  // Interrupt Flag register.
-      return interrupt_flag_;
-    }
-    if (offset == 0xff40) {
-      return display_->Control();
-    }
-    if (offset == 0xff41) {
-      return display_->Status();
-    }
-    if (offset == 0xff42) {
-      return display_->ScrollY();
-    }
-    if (offset == 0xff43) {
-      return display_->ScrollX();
-    }
-    if (offset == 0xff44) {
-      return display_->LCDCY();
-    }
-    if (offset == 0xffff) {  // Interrupt Enable register.
-      return interrupt_enable_;
-    }
+    if (offset == 0xff00) { return input_->Joypad(); }
+    if (offset == 0xff04) { return timers_->Divider(); }
+    if (offset == 0xff0f) { return interrupt_flag_; }
+
+    if (offset == 0xff40) { return display_->Control(); }
+    if (offset == 0xff41) { return display_->Status(); }
+    if (offset == 0xff42) { return display_->ScrollY(); }
+    if (offset == 0xff43) { return display_->ScrollX(); }
+    if (offset == 0xff44) { return display_->LCDCY(); }
+    if (offset == 0xff4a) { return display_->WindowY(); }
+    if (offset == 0xff4b) { return display_->WindowX(); }
+
+    if (offset == 0xffff) { return interrupt_enable_; }
+
     FATALF("NOT IMPLEMENTED: read from device 0x%04x", offset & 0xffff);
   }
 
