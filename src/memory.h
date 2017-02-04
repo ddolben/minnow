@@ -176,15 +176,11 @@ class Memory {
       return;
     }
     if (offset == 0xff06) {  // Timer Modulo register.
-      ERRORF("NOT IMPLEMENTED: timers (0x%04x) <- 0x%02x",
-          offset & 0xffff, value & 0xff);
-      timer_modulo_ = value;
+      timers_->set_modulo(value);
       return;
     }
     if (offset == 0xff07) {  // Timer Control register.
-      ERRORF("NOT IMPLEMENTED: timers (0x%04x) <- 0x%02x",
-          offset & 0xffff, value & 0xff);
-      timer_control_ = value;
+      timers_->set_control(value);
       return;
     }
     if (offset == 0xff0f) {  // Interrupt Flag register.
@@ -235,8 +231,6 @@ class Memory {
       return;
     }
     if (offset == 0xffff) {
-      ERRORF("NOT IMPLEMENTED: interrupts (0x%04x) <- 0x%02x",
-          offset & 0xffff, value & 0xff);
       interrupt_enable_ = value;
       return;
     }
@@ -251,9 +245,6 @@ class Memory {
   std::unique_ptr<MMapFile> bootstrap_;
   uint8_t wram_[8192];  // 8k of working ram
   uint8_t high_ram_[128];  // 128 bytes of high ram
-
-  uint8_t timer_modulo_ = 0;  // 0xFF06
-  uint8_t timer_control_ = 0;  // 0xFF07
 
   // 0xFF0F
   // Interrupt Enable register (bits are set to enable interrupts).

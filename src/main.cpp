@@ -54,9 +54,9 @@ int main(int argc, char *argv[]) {
   ProcessArgs(&argc, &argv);
 
   std::shared_ptr<EventDispatch> dispatch(new EventDispatch());
-  std::shared_ptr<Timers> timers(new Timers());
   std::shared_ptr<Clock> clock(new Clock());
   std::shared_ptr<Interrupts> interrupts(new Interrupts());
+  std::shared_ptr<Timers> timers(new Timers(clock, interrupts));
   std::shared_ptr<Input> input(new Input());
   std::shared_ptr<WindowController> window_controller(
       new WindowController(input, dispatch));
