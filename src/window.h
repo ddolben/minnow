@@ -53,6 +53,10 @@ class Window {
     render_func_ = f;
   }
 
+  std::unique_lock<std::recursive_mutex> LockPixels() {
+    return std::unique_lock<std::recursive_mutex>(mutex_);
+  }
+
   // Sets the color of a pixel in the window's texture.
   // color is in 8-bit ARGB format
   void SetPixel(int x, int y, uint32_t color) {

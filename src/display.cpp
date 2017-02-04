@@ -41,6 +41,9 @@ void Display::RenderScanline() {
   // Used for composition, to determine if one color should overwrite another.
   int color_indices[kDisplayWidth];
 
+  // This lock will be destroyed and released when the function returns.
+  auto pixel_lock = window_->LockPixels();
+
   // Render background tiles.
   if ((control_ & BG_ENABLE_BIT) != 0) {
     int offset_x = ScrollX();
