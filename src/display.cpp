@@ -57,13 +57,44 @@ void Display::RenderScanline() {
       tile_x = x % 8;
 
       // TODO: factor out into a function
-      Tile *tile = this->GetTile(x/8, y/8);
+      Tile *tile = this->GetTile(x/8, y/8,
+          ((control_ & BG_TILE_MAP_SELECT_BIT) == 0));
       uint8_t *b = tile->data + (tile_y*2);
       uint8_t value =
         ((*b >> (7-tile_x)) & 0x1) | (((*(b+1) >> (7-tile_x)) & 0x1) << 1);
 
       color_indices[ix] = value;
       this->window_->SetPixel(ix, line_index, this->Color(value));
+    }
+  }
+
+  // Render windows.
+  if ((control_ & WINDOW_ENABLE_BIT) != 0) {
+    int offset_x = WindowX() - 7;
+    int offset_y = WindowY();
+
+    // Check if the window overlaps with this scanline.
+    if (offset_y <= line_index && line_index < offset_y + kDisplayHeight &&
+        -7 <= offset_x && offset_x < 159) {
+      int screen_x, tile_x;
+      int window_y = line_index - offset_y;
+      int tile_y = window_y % 8;
+      for (int window_x = 0; window_x < kDisplayWidth; ++window_x) {
+        screen_x = offset_x + window_x;
+        if (screen_x < 0 || kDisplayWidth < screen_x) {
+          continue;
+        }
+        tile_x = window_x % 8;
+
+        Tile *tile = this->GetTile(window_x/8, window_y/8,
+            ((control_ & WINDOW_TILE_MAP_SELECT_BIT) == 0));
+        uint8_t *b = tile->data + (tile_y*2);
+        uint8_t value =
+          ((*b >> (7-tile_x)) & 0x1) | (((*(b+1) >> (7-tile_x)) & 0x1) << 1);
+
+        color_indices[screen_x] = value;
+        this->window_->SetPixel(screen_x, line_index, this->Color(value));
+      }
     }
   }
 

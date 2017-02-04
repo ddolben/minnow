@@ -228,15 +228,9 @@ class Memory {
       } else if (offset == 0xff49) {
         display_->SetObjectPalette1(value);
       } else if (offset == 0xff4a) {
-        ERRORF("NOT IMPLEMENTED: windows (0x%04x) <- 0x%02x",
-            offset & 0xffff, value & 0xff);
         display_->SetWindowY(value);
       } else if (offset == 0xff4b) {
-        // For some reason, this register is Window X minus 7
-        // TODO: be careful of over- and underflow.
-        ERRORF("NOT IMPLEMENTED: windows (0x%04x) <- 0x%02x",
-            offset & 0xffff, value & 0xff);
-        display_->SetWindowX(value - 7);
+        display_->SetWindowX(value);
       } else {
         FATALF("NOT IMPLEMENTED: write to video device (0x%04x) <- %s",
             offset & 0xffff, ByteBits(value).c_str());

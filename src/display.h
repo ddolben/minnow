@@ -54,6 +54,7 @@ class Display {
     WINDOW_ENABLE_BIT = 0x20,
     TILE_DATA_SELECT_BIT = 0x10,
     BG_TILE_MAP_SELECT_BIT = 0x08,
+    OBJ_SIZE_BIT = 0x04,
     OBJ_ENABLE_BIT = 0x02,
     BG_ENABLE_BIT = 0x01
   };
@@ -155,8 +156,8 @@ class Display {
   uint8_t Control() { return control_; }
   void SetControl(uint8_t value) {
     // TODO: turn off display when bit 7 goes to 0, but only during VBLANK
-    if ((value & WINDOW_ENABLE_BIT) != 0) {
-      FATALF("Unimplemented: window enable");
+    if ((value & OBJ_SIZE_BIT) != 0) {
+      FATALF("Unimplemented control bit: sprite size");
     }
     control_ = value;
   }
@@ -202,13 +203,13 @@ class Display {
 
   // Returns one of the tiles in the 32 x 32 tileset, indexed by x and y
   // coordinates. Looks into the tilemap and returns the corresponding tile.
-  Tile *GetTile(int x, int y) {
+  Tile *GetTile(int x, int y, bool use_first_tilemap) {
     CHECK(0 <= x && x <= 32);
     CHECK(0 <= y && y <= 32);
     // TODO: this mutex lock doesn't actually protect against accessing the
     // tile's memory after this function returns.
     std::lock_guard<std::mutex> lock(mutex_);
-    uint8_t tile_id = ((control_ & BG_TILE_MAP_SELECT_BIT) == 0)
+    uint8_t tile_id = (use_first_tilemap)
         ? tilemap_[y*32 + x]
         : tilemap_[y*32 + x + 0x400];
     if ((control_ & TILE_DATA_SELECT_BIT) == 0) {
