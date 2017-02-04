@@ -81,6 +81,7 @@ class Display {
   // Bit3   Tile VRAM-Bank  **CGB Mode Only**     (0=Bank 0, 1=Bank 1)
   // Bit2-0 Palette number  **CGB Mode Only**     (OBP0-7)
   enum SpriteAttributeMask {
+    SPRITE_OBJ_TO_BG_PRIORITY_BIT = 0x80,
     SPRITE_Y_FLIP_BIT = 0x40,
     SPRITE_X_FLIP_BIT = 0x20
   };

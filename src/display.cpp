@@ -38,6 +38,9 @@ void Display::RenderScanline() {
   const int kBackgroundMapWidth = 256;
   const int kBackgroundMapHeight = 256;
 
+  // Used for composition, to determine if one color should overwrite another.
+  int color_indices[kDisplayWidth];
+
   // Render background tiles.
   if ((control_ & BG_ENABLE_BIT) != 0) {
     int offset_x = ScrollX();
@@ -58,6 +61,8 @@ void Display::RenderScanline() {
       uint8_t *b = tile->data + (tile_y*2);
       uint8_t value =
         ((*b >> (7-tile_x)) & 0x1) | (((*(b+1) >> (7-tile_x)) & 0x1) << 1);
+
+      color_indices[ix] = value;
       this->window_->SetPixel(ix, line_index, this->Color(value));
     }
   }
@@ -74,7 +79,9 @@ void Display::RenderScanline() {
       }
       Tile *tile = reinterpret_cast<struct Tile*>(
           this->vram_ + (sprite->tile_id() * 16));
-      int x, y;
+
+      // TODO: refactor, this is ugly
+      int x, window_x;
       int iy = line_index - (sprite->y_pos() - 16);
       if (iy > 7) continue;
       int y = ((sprite->attributes() & SPRITE_Y_FLIP_BIT) == 0) ? iy : (7-iy);
@@ -83,10 +90,20 @@ void Display::RenderScanline() {
         uint8_t *b = tile->data + (y*2);
         uint8_t value =
             ((*b >> (7-x)) & 0x1) | (((*(b+1) >> (7-x)) & 0x1) << 1);
+        if (value == 0) {
+          continue;  // For sprites, color 0 is transparent.
+        }
+
         // TODO: use sprite palettes instead
-        // TODO: some colors are transparent
+        window_x = (sprite->x_pos() + ix - 8);
+        if ((sprite->attributes() & SPRITE_OBJ_TO_BG_PRIORITY_BIT) != 0 &&
+            color_indices[window_x] != 0) {
+          // Skip this pixel because BG priority is enabled and the background
+          // color is not 0.
+          continue;
+        }
         this->window_->SetPixel(
-            (sprite->x_pos() + ix - 8),
+            window_x,
             (sprite->y_pos() + iy - 16),
             this->Color(value));
       }
