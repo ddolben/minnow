@@ -811,11 +811,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0xe1:
     Pop(&hl_, memory);
     break;
-  case 0xe2:
-    {
-      Write8(0xff00 + (*c_), *a_, memory);
-    }
-    break;
+  case 0xe2: Write8(0xff00 + (*c_), *a_, memory); break;
   case 0xe5:
     Push(hl_, memory);
     break;
@@ -854,6 +850,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0xf1:
     Pop(&af_, memory);
     break;
+  case 0xf2: *a_ = Read8(0xff00 + (*c_), memory); break;
   case 0xf3:
     ime_ = false;
     break;
