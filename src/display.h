@@ -102,8 +102,10 @@ class Display {
       std::shared_ptr<Interrupts> interrupts,
       std::shared_ptr<WindowController> window_controller)
       : interrupts_(interrupts), window_controller_(window_controller) {
+
     tileset_window_.reset(new Window(256, 384, 128, 192, "Minnow Tileset"));
     window_controller_->AddWindow(tileset_window_);
+
     window_.reset(new Window(
           width, height, kDisplayWidth, kDisplayHeight, "Minnow Emulator"));
     window_controller_->AddWindow(window_);
@@ -119,27 +121,33 @@ class Display {
     // TODO: update LCDSTAT mode/coincidence values
     // TODO: LCDSTAT interrupts
 
-    // Check to see if LY == LYC.
-    if (LCDCY() == lyc_) {
-      status_ |= COINCIDENCE_FLAG_BIT;
-      // If the coincidence interrupt is enabled, signal an LCD_STAT interrupt.
-      if ((status_ & COINCIDENCE_INTERRUPT_BIT) != 0) {
-        interrupts_->SignalInterrupt(INTERRUPT_LCD_STAT);
-      }
-    }
-    // TODO: should I unset the coincidence bit?
-
     // Each time the LCD Y-coordinate advances, render the next line to the
     // display.
-    static int y_compare = 0;
     if (LCDCY() != y_compare) {
       y_compare = LCDCY();
+
+      // Check to see if LY == LYC.
+      if (LCDCY() == lyc_) {
+        status_ |= COINCIDENCE_FLAG_BIT;
+        // If the coincidence interrupt is enabled, signal an LCD_STAT interrupt.
+        if ((status_ & COINCIDENCE_INTERRUPT_BIT) != 0) {
+          interrupts_->SignalInterrupt(INTERRUPT_LCD_STAT);
+        }
+      } else {
+        status_ &= (~COINCIDENCE_FLAG_BIT);
+      }
+
       RenderScanline();
     }
 
     int diff = cycle_clock_ - kVBlankStart;
-    if (diff >= 0 && diff < cycles) {
+    if (diff >= 0 && !in_vblank) {
+      // Use this boolean to make sure we don't signal too many vblank
+      // interrupts.
+      in_vblank = true;
       interrupts_->SignalInterrupt(INTERRUPT_VBLANK);
+    } else {
+      in_vblank = false;
     }
   }
 
@@ -208,7 +216,9 @@ class Display {
     CHECK(0 <= y && y <= 32);
     // TODO: this mutex lock doesn't actually protect against accessing the
     // tile's memory after this function returns.
-    std::lock_guard<std::mutex> lock(mutex_);
+    // TODO: this mutex seems to be slowing things down A LOT, probably because
+    // it's called at every pixel.
+    //std::lock_guard<std::mutex> lock(mutex_);
     uint8_t tile_id = (use_first_tilemap)
         ? tilemap_[y*32 + x]
         : tilemap_[y*32 + x + 0x400];
@@ -251,6 +261,8 @@ class Display {
   // the window's framebuffer.
   void RenderScanline();
 
+  bool in_vblank = false;
+  int y_compare = 0;
   uint8_t control_ = 0;
   uint8_t status_ = 0;
   // LY Compare value.
