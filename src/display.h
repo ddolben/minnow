@@ -72,6 +72,10 @@ class Display {
   enum StatusMask {
     COINCIDENCE_INTERRUPT_BIT = 0x40,
     COINCIDENCE_FLAG_BIT = 0x04,
+    MODE_DATA_TRANSFER_BITS = 0x03,
+    MODE_OAM_SEARCH_BITS = 0x02,
+    MODE_VBLANK_BITS = 0x01,
+    MODE_HBLANK_BITS = 0x00
   };
 
 	// Bit7   OBJ-to-BG Priority (0=OBJ Above BG, 1=OBJ Behind BG color 1-3)
@@ -106,6 +110,10 @@ class Display {
     tileset_window_.reset(new Window(256, 384, 128, 192, "Minnow Tileset"));
     window_controller_->AddWindow(tileset_window_);
 
+    background_window_.reset(new Window(
+          512, 512, 256, 256, "Minnow Background"));
+    window_controller_->AddWindow(background_window_);
+
     window_.reset(new Window(
           width, height, kDisplayWidth, kDisplayHeight, "Minnow Emulator"));
     window_controller_->AddWindow(window_);
@@ -117,8 +125,19 @@ class Display {
 
   void AdvanceClock(int cycles) {
     cycle_clock_ = (cycle_clock_ + cycles) % kCycleLength;
+    // Zero the mode bits in the LCD status register.
+    status_ &= ~0x03;
+    // Update the mode bits in the LCD status register.
+    if (cycle_clock_ >= kVBlankStart) {
+      status_ |= MODE_VBLANK_BITS;
+    } else if ((cycle_clock_ % kLineCycleCount) >= 356) {
+      status_ |= MODE_HBLANK_BITS;
+    } else if ((cycle_clock_ % kLineCycleCount) >= 80) {
+      status_ |= MODE_DATA_TRANSFER_BITS;
+    } else {
+      status_ |= MODE_OAM_SEARCH_BITS;
+    }
 
-    // TODO: update LCDSTAT mode/coincidence values
     // TODO: LCDSTAT interrupts
 
     // Each time the LCD Y-coordinate advances, render the next line to the
@@ -129,7 +148,8 @@ class Display {
       // Check to see if LY == LYC.
       if (LCDCY() == lyc_) {
         status_ |= COINCIDENCE_FLAG_BIT;
-        // If the coincidence interrupt is enabled, signal an LCD_STAT interrupt.
+        // If the coincidence interrupt is enabled, signal an LCD_STAT
+        // interrupt.
         if ((status_ & COINCIDENCE_INTERRUPT_BIT) != 0) {
           interrupts_->SignalInterrupt(INTERRUPT_LCD_STAT);
         }
@@ -137,17 +157,12 @@ class Display {
         status_ &= (~COINCIDENCE_FLAG_BIT);
       }
 
-      RenderScanline();
-    }
+      // Check if we've just entered line 144, or began the VBlank.
+      if (LCDCY() == 144) {
+        interrupts_->SignalInterrupt(INTERRUPT_VBLANK);
+      }
 
-    int diff = cycle_clock_ - kVBlankStart;
-    if (diff >= 0 && !in_vblank) {
-      // Use this boolean to make sure we don't signal too many vblank
-      // interrupts.
-      in_vblank = true;
-      interrupts_->SignalInterrupt(INTERRUPT_VBLANK);
-    } else {
-      in_vblank = false;
+      RenderScanline();
     }
   }
 
@@ -157,6 +172,7 @@ class Display {
   }
 
   // LY Compare value.
+  uint8_t LYC() { return lyc_; }
   void SetLYC(uint8_t value) {
     lyc_ = value;
   }
@@ -261,7 +277,6 @@ class Display {
   // the window's framebuffer.
   void RenderScanline();
 
-  bool in_vblank = false;
   int y_compare = 0;
   uint8_t control_ = 0;
   uint8_t status_ = 0;
@@ -284,6 +299,7 @@ class Display {
   std::shared_ptr<WindowController> window_controller_;
 
   std::shared_ptr<Window> window_;
+  std::shared_ptr<Window> background_window_;
   std::shared_ptr<Window> tileset_window_;
 };
 

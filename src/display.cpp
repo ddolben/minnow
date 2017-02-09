@@ -24,6 +24,24 @@ void Display::Loop() {
     }
   });
 
+  background_window_->SetRenderFunc([this]{
+    int tile_y, tile_x;
+    for (int y = 0; y < 256; ++y) {
+      tile_y = y % 8;
+      for (int x = 0; x < 256; ++x) {
+        tile_x = x % 8;
+
+        Tile *tile = this->GetTile(x/8, y/8,
+            ((control_ & BG_TILE_MAP_SELECT_BIT) == 0));
+        uint8_t *b = tile->data + (tile_y*2);
+        uint8_t value =
+          ((*b >> (7-tile_x)) & 0x1) | (((*(b+1) >> (7-tile_x)) & 0x1) << 1);
+
+        this->background_window_->SetPixel(x, y, this->Color(value));
+      }
+    }
+  });
+
   // Loop.
   while (window_controller_->Tick()) {}
 }
@@ -32,7 +50,7 @@ void Display::RenderScanline() {
   // TODO: check if LCD is on
 
   uint8_t line_index = LCDCY();
-  if (line_index > kDisplayHeight) return;
+  if (line_index >= kDisplayHeight) return;
 
   // The background tile map dimensions, in pixels.
   const int kBackgroundMapWidth = 256;

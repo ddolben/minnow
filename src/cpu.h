@@ -75,7 +75,6 @@ class CPU {
         }
       }
 
-      // TODO: timers
       if (ime_) {
         if (!ProcessInterrupts(memory)) {
           break;

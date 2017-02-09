@@ -152,6 +152,7 @@ class Memory {
     if (offset == 0xff42) { return display_->ScrollY(); }
     if (offset == 0xff43) { return display_->ScrollX(); }
     if (offset == 0xff44) { return display_->LCDCY(); }
+    if (offset == 0xff45) { return display_->LYC(); }
     if (offset == 0xff4a) { return display_->WindowY(); }
     if (offset == 0xff4b) { return display_->WindowX(); }
 
