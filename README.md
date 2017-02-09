@@ -24,6 +24,7 @@ Minnow builds under C++ 11 and depends on the following:
 * [Opcode Cheat Sheet](http://pastraiser.com/cpu/gameboy/gameboy_opcodes.html)
 * http://www.devrs.com/gb/files/opcodes.html
 * [GameBoy Dev Book](http://bgb.bircd.org/pandocs.htm)
+* [GameBoy LCD Cycle Timing](http://gameboy.mongenel.com/dmg/gbc_lcdc_timing.txt)
 * [GameBoy CPU Timing](http://hitmen.c02.at/files/releases/gbc/gbc_cpu_timing.txt)
 * [GameBoy CPU Manual](http://marc.rawer.de/Gameboy/Docs/GBCPUman.pdf)
   + NOTE: this manual has some errors (e.g. its description of the carry flags is wrong)
