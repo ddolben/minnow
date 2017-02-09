@@ -14,7 +14,7 @@ namespace dgb {
 class Clock {
  public:
   // CPU clock speed: 4.194304 MHz (0.2384 us per cycle)
-  const std::chrono::nanoseconds kCPUCycleTime{238};  // Actually 2384
+  const std::chrono::nanoseconds kCPUCycleTime{238};  // Actually 238.4
   const uint64_t kSyncCycles = 4194;  // Roughly 1ms worth of cycles
 
   void Tick(int cycles) {

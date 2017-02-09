@@ -157,12 +157,16 @@ class Display {
         status_ &= (~COINCIDENCE_FLAG_BIT);
       }
 
+      // Render the current scanline out to the framebuffer.
+      RenderScanline();
+
       // Check if we've just entered line 144, or began the VBlank.
       if (LCDCY() == 144) {
         interrupts_->SignalInterrupt(INTERRUPT_VBLANK);
-      }
 
-      RenderScanline();
+        // Tell the window controller to draw the frame to the screen.
+        window_controller_->SignalFrame();
+      }
     }
   }
 

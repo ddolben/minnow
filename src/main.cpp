@@ -7,11 +7,11 @@
 
 #include "cartridge.h"
 #include "clock.h"
+#include "common/flags.h"
 #include "cpu.h"
 #include "display.h"
 #include "event_dispatch.h"
 #include "fixes.h"
-#include "flags.h"
 #include "logging.h"
 #include "memory.h"
 #include "window.h"
@@ -41,6 +41,7 @@ void PrintHelpAndExit(char *arg0) {
 Flag<std::string> FLAG_bootloader("bootloader", "");
 Flag<std::string> FLAG_breakpoint("breakpoint", "");
 Flag<std::string> FLAG_breakpoint_opcode("breakpoint_opcode", "");
+Flag<bool> FLAG_print_fps("print_fps", false);
 
 void ProcessArgs(int *argc, char **argv[]) {
   ParseFlags(argc, argv);
@@ -60,6 +61,7 @@ int main(int argc, char *argv[]) {
   std::shared_ptr<Input> input(new Input());
   std::shared_ptr<WindowController> window_controller(
       new WindowController(input, dispatch));
+  window_controller->set_print_fps(*FLAG_print_fps);
   std::shared_ptr<Display> display(
       new Display(Display::kDisplayWidth*2, Display::kDisplayHeight*2,
                   clock, interrupts, window_controller));

@@ -1,12 +1,14 @@
 #ifndef DGB_WINDOW_H_
 #define DGB_WINDOW_H_
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <mutex>
 
 #include <SDL2/SDL.h>
 
+#include "common/sync/semaphore.h"
 #include "event_dispatch.h"
 #include "input.h"
 
@@ -161,25 +163,17 @@ class WindowController {
     windows_.push_back(window);
   }
 
-  void CheckInput() {
-    // Check keyboard state and update input.
-    const Uint8 *state = SDL_GetKeyboardState(NULL);
-    uint8_t buttons = 0;
-    if (state[SDL_SCANCODE_DOWN]) buttons |= BUTTON_DOWN;
-    if (state[SDL_SCANCODE_UP]) buttons |= BUTTON_UP;
-    if (state[SDL_SCANCODE_LEFT]) buttons |= BUTTON_LEFT;
-    if (state[SDL_SCANCODE_RIGHT]) buttons |= BUTTON_RIGHT;
-    if (state[SDL_SCANCODE_RETURN]) buttons |= BUTTON_START;
-    if (state[SDL_SCANCODE_TAB]) buttons |= BUTTON_SELECT;
-    if (state[SDL_SCANCODE_X]) buttons |= BUTTON_A;
-    if (state[SDL_SCANCODE_Z]) buttons |= BUTTON_B;
+  // SignalFrame tells the WindowController that it's acceptable to draw a
+  // frame.
+  void SignalFrame() {
+    framerate_sync_.Notify();
+  }
 
-    input_->SetButtons(buttons);
+  void set_print_fps(bool value) {
+    print_fps_ = value;
   }
 
   bool Tick() {
-    if (!running_) return false;
-
     // TODO: interrupts
     while (SDL_PollEvent(&event_)) {
       // TODO: when stuck in a loop, several events appears to trigger some
@@ -200,19 +194,63 @@ class WindowController {
 
     if (!running_) return false;
 
+    // Wait for the CPU to signal a frame draw.
+    framerate_sync_.Wait();
+
     for (std::shared_ptr<Window> &window : windows_) {
       window->Tick();
+    }
+
+    if (print_fps_) {
+      DoFPS();
     }
 
     return true;
   }
 
  private:
+  void DoFPS() {
+    auto now = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        now - last_fps_time_);
+    const static std::chrono::nanoseconds kFPSInterval{1000000000};
+    if (elapsed > kFPSInterval) {
+      printf("%d fps\n", frame_counter);
+      frame_counter = 0;
+      last_fps_time_ = now;
+    } else {
+      ++frame_counter;
+    }
+  }
+
+  void CheckInput() {
+    // Check keyboard state and update input.
+    const Uint8 *state = SDL_GetKeyboardState(NULL);
+    uint8_t buttons = 0;
+    if (state[SDL_SCANCODE_DOWN]) buttons |= BUTTON_DOWN;
+    if (state[SDL_SCANCODE_UP]) buttons |= BUTTON_UP;
+    if (state[SDL_SCANCODE_LEFT]) buttons |= BUTTON_LEFT;
+    if (state[SDL_SCANCODE_RIGHT]) buttons |= BUTTON_RIGHT;
+    if (state[SDL_SCANCODE_RETURN]) buttons |= BUTTON_START;
+    if (state[SDL_SCANCODE_TAB]) buttons |= BUTTON_SELECT;
+    if (state[SDL_SCANCODE_X]) buttons |= BUTTON_A;
+    if (state[SDL_SCANCODE_Z]) buttons |= BUTTON_B;
+
+    input_->SetButtons(buttons);
+  }
+
   bool running_ = true;
   std::vector<std::shared_ptr<Window>> windows_;
   std::shared_ptr<Input> input_;
   std::shared_ptr<EventDispatch> dispatch_;
   SDL_Event event_;
+
+  Semaphore framerate_sync_;
+
+  bool print_fps_ = false;
+  std::chrono::high_resolution_clock::time_point last_fps_time_ =
+      std::chrono::high_resolution_clock::now();
+  int frame_counter = 0;
 };
 
 }  // namespace dgb
