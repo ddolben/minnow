@@ -183,6 +183,9 @@ class WindowController {
           if (event_.key.keysym.scancode == SDL_SCANCODE_ESCAPE) {
             dispatch_->FireEvent(Event(EVENT_START_DEBUGGER));
           }
+          if (event_.key.keysym.scancode == SDL_SCANCODE_SPACE) {
+            dispatch_->FireEvent(Event(EVENT_TOGGLE_PAUSE));
+          }
           break;
         case SDL_QUIT:
           running_ = false;
@@ -195,7 +198,8 @@ class WindowController {
     if (!running_) return false;
 
     // Wait for the CPU to signal a frame draw.
-    framerate_sync_.Wait();
+    // Include a timeout so we don't get stuck here if the CPU is paused.
+    framerate_sync_.WaitWithTimeout(100);
 
     for (std::shared_ptr<Window> &window : windows_) {
       window->Tick();

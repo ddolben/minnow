@@ -9,7 +9,8 @@ namespace dgb {
 
 enum EventCode {
   EVENT_UNKNOWN = 0,
-  EVENT_START_DEBUGGER
+  EVENT_START_DEBUGGER,
+  EVENT_TOGGLE_PAUSE
 };
 
 class Event {

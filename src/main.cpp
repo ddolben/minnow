@@ -68,8 +68,12 @@ int main(int argc, char *argv[]) {
   std::shared_ptr<Cartridge> cartridge(new Cartridge(args.filename));
   Memory memory(cartridge, display, input, timers);
   CPU cpu(clock, interrupts);
+
   dispatch->RegisterObserver(dgb::EVENT_START_DEBUGGER, [&cpu](const Event &event) {
     cpu.set_debug(true);
+  });
+  dispatch->RegisterObserver(dgb::EVENT_TOGGLE_PAUSE, [&cpu](const Event &event) {
+    cpu.set_paused(!cpu.paused());
   });
 
   if ((*FLAG_bootloader).empty()) {

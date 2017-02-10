@@ -1,6 +1,8 @@
 #ifndef DGB_CPU_H_
 #define DGB_CPU_H_
 
+#include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -82,6 +84,10 @@ class CPU {
       }
 
       clock_->Tick(cycle_count);
+
+      while(paused_.load()) {
+        std::this_thread::sleep_for (std::chrono::milliseconds(1));
+      }
     }
   }
 
@@ -97,6 +103,9 @@ class CPU {
 
   void set_breakpoint(uint16_t value) { breakpoint_ = value; }
   void set_breakpoint_opcode(int16_t value) { breakpoint_opcode_ = value; }
+
+  void set_paused(bool value) { paused_.store(value); }
+  bool paused() { return paused_.load(); }
 
   void set_debug(bool value) {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -121,6 +130,7 @@ class CPU {
   std::thread thread_;
   std::mutex mutex_;
   bool is_running_ = true;
+  std::atomic<bool> paused_{false};
   bool halted_ = false;
   bool debug_ = false;
   // Memory address at which to break.

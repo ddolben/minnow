@@ -140,13 +140,14 @@ class Display {
 
     // TODO: LCDSTAT interrupts
 
+    int line_number = LCDCY();
     // Each time the LCD Y-coordinate advances, render the next line to the
     // display.
-    if (LCDCY() != y_compare) {
-      y_compare = LCDCY();
+    if (line_number != y_compare) {
+      y_compare = line_number;
 
       // Check to see if LY == LYC.
-      if (LCDCY() == lyc_) {
+      if (line_number == lyc_) {
         status_ |= COINCIDENCE_FLAG_BIT;
         // If the coincidence interrupt is enabled, signal an LCD_STAT
         // interrupt.
@@ -161,7 +162,7 @@ class Display {
       RenderScanline();
 
       // Check if we've just entered line 144, or began the VBlank.
-      if (LCDCY() == 144) {
+      if (line_number == 144) {
         interrupts_->SignalInterrupt(INTERRUPT_VBLANK);
 
         // Tell the window controller to draw the frame to the screen.
