@@ -124,25 +124,6 @@ class CPU {
     CARRY_FLAG = 0x10
   };
 
-  std::shared_ptr<Clock> clock_;
-  std::shared_ptr<Interrupts> interrupts_;
-
-  std::thread thread_;
-  std::mutex mutex_;
-  bool is_running_ = true;
-  std::atomic<bool> paused_{false};
-  bool halted_ = false;
-  bool debug_ = false;
-  // Memory address at which to break.
-  int64_t breakpoint_ = -1;
-  // Opcode at which to break (it's actually just a uint8, but expanding to
-  // 16-bit signed allows for negative numbers to disable it).
-  int16_t breakpoint_opcode_ = -1;
-  // Memory write address at which to break (actually uint16).
-  int32_t breakpoint_write_ = -1;
-  // Memory read address at which to break (actually uint16).
-  int32_t breakpoint_read_ = -1;
-
   // Op helpers.
   uint8_t LoadData8(uint8_t *dest, Memory *memory);
   uint16_t LoadData16(uint16_t *dest, Memory *memory);
@@ -182,6 +163,25 @@ class CPU {
   void TestBit(uint8_t value, unsigned int bit_index);
   uint8_t SetBit(uint8_t value, unsigned int bit_index);
   uint8_t ResetBit(uint8_t value, unsigned int bit_index);
+
+  std::shared_ptr<Clock> clock_;
+  std::shared_ptr<Interrupts> interrupts_;
+
+  std::thread thread_;
+  std::mutex mutex_;
+  bool is_running_ = true;
+  std::atomic<bool> paused_{false};
+  bool halted_ = false;
+  bool debug_ = false;
+  // Memory address at which to break.
+  int64_t breakpoint_ = -1;
+  // Opcode at which to break (it's actually just a uint8, but expanding to
+  // 16-bit signed allows for negative numbers to disable it).
+  int16_t breakpoint_opcode_ = -1;
+  // Memory write address at which to break (actually uint16).
+  int32_t breakpoint_write_ = -1;
+  // Memory read address at which to break (actually uint16).
+  int32_t breakpoint_read_ = -1;
 
   uint16_t previous_pc_ = 0;
   std::string previous_debug_command_;
