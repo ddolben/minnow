@@ -16,6 +16,11 @@ Minnow builds under C++ 11 and depends on the following:
 * clang++ (or g++, if you dare)
 * [SDL 2.0](https://www.libsdl.org)
 
+# Interesting Stuff
+
+Check out [this page](notes/interesting_stuff.md) for some interesting stuff
+I've discovered along the way.
+
 # References
 
 * http://gigi.nullneuron.net/gigilabs/sdl2-pixel-drawing/
