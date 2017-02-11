@@ -141,10 +141,26 @@ class Display {
     // TODO: LCDSTAT interrupts
 
     int line_number = LCDCY();
+
+    // Determine whether it's time to render this scanline.
+    // Scanlines are rendered a certain number of cycles into a particular LCD
+    // line. That number depends on the number of sprites present in the row. I
+    // don't know the exact number, but I know that the upper bound on the
+    // number of cycles is 297, so wait until we are at least 297 cycles into
+    // the scanline before transferring it to the framebuffer.
+    if ((previous_scanline_ < line_number ||
+         (line_number <= 0 && previous_scanline_ >= 143)) &&
+        line_number < 144 && (cycle_clock_ % kLineCycleCount) > 83) {
+      previous_scanline_ = line_number;
+
+      // Render the current scanline out to the framebuffer.
+      RenderScanline();
+    }
+
     // Each time the LCD Y-coordinate advances, render the next line to the
     // display.
-    if (line_number != y_compare) {
-      y_compare = line_number;
+    if (line_number != y_compare_) {
+      y_compare_ = line_number;
 
       // Check to see if LY == LYC.
       if (line_number == lyc_) {
@@ -157,9 +173,6 @@ class Display {
       } else {
         status_ &= (~COINCIDENCE_FLAG_BIT);
       }
-
-      // Render the current scanline out to the framebuffer.
-      RenderScanline();
 
       // Check if we've just entered line 144, or began the VBlank.
       if (line_number == 144) {
@@ -282,7 +295,8 @@ class Display {
   // the window's framebuffer.
   void RenderScanline();
 
-  int y_compare = 0;
+  int y_compare_ = 0;
+  int previous_scanline_ = -1;
   uint8_t control_ = 0;
   uint8_t status_ = 0;
   // LY Compare value.

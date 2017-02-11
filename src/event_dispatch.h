@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <map>
+#include <memory>
 #include <vector>
 
 namespace dgb {
@@ -41,6 +42,12 @@ class EventDispatch {
   // TODO: mutex
   std::map<EventCode, std::vector<Observer>> observers_;
 };
+
+// Returns a globally shared event dispatch instance. Normally, you would want
+// to create a shared pointer in main() and pass it into your classes, but this
+// can be useful for quickly triggering the debugger from a class that doesn't
+// have a reference to it.
+std::shared_ptr<EventDispatch> GlobalDispatch();
 
 }  // namespace dgb
 

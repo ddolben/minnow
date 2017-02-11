@@ -1,6 +1,7 @@
 #include "cpu.h"
 
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <iostream>
 
@@ -356,22 +357,53 @@ namespace {
 struct Op {
   uint8_t code;
   uint8_t length;
-  uint8_t cycle_count;
+  uint8_t short_cycle_count;
+  uint8_t long_cycle_count;
   std::string debug;
 };
 
-// TODO: handle ops with different cycle counts depending on branch (e.g.
-// jumps)
-// TODO: make sure to handle CB prefix
-// TODO: generate code for load ops?
 Op ops[256] = {
 #include "opcodes.inl"
 };
 
-// TODO: generate code for CB-prefixed opcodes
 Op cb_ops[256] = {
 #include "cb_opcodes.inl"
 };
+
+struct OpInstance {
+  Op op;
+  uint8_t data[2];
+};
+
+std::string OpToString(const OpInstance &oi) {
+  char buf[128];
+
+  if (oi.op.length == 3) {
+    std::snprintf(buf, sizeof(buf),
+        "0x%02x 0x%02x 0x%02x %s",
+        oi.op.code & 0xff,
+        oi.data[0] & 0xff,
+        oi.data[1] & 0xff,
+        oi.op.debug.c_str());
+  } else if (oi.op.length == 2) {
+    std::snprintf(buf, sizeof(buf),
+        "0x%02x 0x%02x      %s",
+        oi.op.code & 0xff,
+        oi.data[0] & 0xff,
+        oi.op.debug.c_str());
+  } else if (oi.op.code == 0xCB) {
+    uint8_t cb_code = oi.data[0];
+    Op cb_op = cb_ops[cb_code];
+    std::snprintf(buf, sizeof(buf),
+        "0x%02x 0x%02x      %s",
+        oi.op.code & 0xff, cb_code & 0xff, cb_op.debug.c_str());
+  } else {
+    std::snprintf(buf, sizeof(buf),
+        "0x%02x           %s",
+        oi.op.code & 0xff, oi.op.debug.c_str());
+  }
+  return std::string(buf);
+}
 }  // namespace
 
 bool CPU::RunOp(Memory *memory, int *cycle_count) {
@@ -390,27 +422,12 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     PrintRegisters();
     DEBUGF("Previous PC: 0x%04x", previous_pc_);
 
-    Op op = ops[code];
-    if (op.length == 3) {
-      DEBUGF("[0x%04x]: 0x%02x 0x%02x 0x%02x %s",
-          pc_ & 0xffff, code & 0xff,
-          Read8(pc_ + 1, memory) & 0xff,
-          Read8(pc_ + 2, memory) & 0xff,
-          op.debug.c_str());
-    } else if (op.length == 2) {
-      DEBUGF("[0x%04x]: 0x%02x 0x%02x     %s",
-          pc_ & 0xffff, code & 0xff,
-          Read8(pc_ + 1, memory) & 0xff,
-          op.debug.c_str());
-    } else if (code == 0xCB) {
-      uint8_t cb_code = Read8(pc_ + 1, memory);
-      Op cb_op = cb_ops[cb_code];
-      DEBUGF("[0x%04x]: 0x%02x 0x%02x     %s",
-          pc_ & 0xffff, code & 0xff, cb_code & 0xff, cb_op.debug.c_str());
-    } else {
-      DEBUGF("[0x%04x]: 0x%02x          %s",
-          pc_ & 0xffff, code & 0xff, op.debug.c_str());
-    }
+
+    OpInstance oi = {};
+    oi.op = ops[code];
+    oi.data[0] = Read8(pc_+1, memory);
+    oi.data[1] = Read8(pc_+2, memory);
+    DEBUGF("[0x%04x]: %s", pc_ & 0xffff, OpToString(oi).c_str());
 
     // TODO: formalize this as a debugger
     std::string line;
@@ -463,6 +480,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   previous_pc_ = pc_;
   pc_++;
 
+  *cycle_count = ops[code].short_cycle_count;
 
   switch (code) {
   case 0x00:
@@ -522,7 +540,13 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     LoadData8(e_, memory);
     break;
   case 0x1f: *a_ = RotateRightThroughCarry(*a_); break;
-  case 0x20: JumpRelative((*f_ & ZERO_FLAG) == 0, memory); break;
+  case 0x20:
+    {
+      bool do_jump = (*f_ & ZERO_FLAG) == 0;
+      JumpRelative(do_jump, memory);
+      if (do_jump) *cycle_count = ops[code].long_cycle_count;
+      break;
+    }
   case 0x21:
     LoadData16(&hl_, memory);
     break;
@@ -538,7 +562,13 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     pc_++;
     break;
   case 0x27: DecimalAdjust(a_); break;
-  case 0x28: JumpRelative((*f_ & ZERO_FLAG) != 0, memory); break;
+  case 0x28:
+    {
+      bool do_jump = (*f_ & ZERO_FLAG) != 0;
+      JumpRelative(do_jump, memory);
+      if (do_jump) *cycle_count = ops[code].long_cycle_count;
+      break;
+    }
   case 0x2a:
     *a_ = Read8(hl_, memory);
     hl_ += 1;
@@ -553,7 +583,13 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     *a_ = ~(*a_);
     *f_ = SUBTRACT_FLAG | HALF_CARRY_FLAG;
     break;
-  case 0x30: JumpRelative((*f_ & CARRY_FLAG) == 0, memory); break;
+  case 0x30:
+    {
+      bool do_jump = (*f_ & CARRY_FLAG) == 0;
+      JumpRelative(do_jump, memory);
+      if (do_jump) *cycle_count = ops[code].long_cycle_count;
+      break;
+    }
   case 0x31:
     LoadData16(&sp_, memory);
     break;
@@ -579,7 +615,13 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x36:
     LoadData8ToMem(hl_, memory);
     break;
-  case 0x38: JumpRelative((*f_ & CARRY_FLAG) != 0, memory); break;
+  case 0x38:
+    {
+      bool do_jump = (*f_ & CARRY_FLAG) != 0;
+      JumpRelative(do_jump, memory);
+      if (do_jump) *cycle_count = ops[code].long_cycle_count;
+      break;
+    }
   case 0x3a:
     *a_ = Read8(hl_, memory);
     hl_--;
@@ -735,21 +777,34 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0xbf: Cp(*a_); break;
 
   case 0xc0:
-    if ((*f_ & ZERO_FLAG) == 0) Return(memory);
+    if ((*f_ & ZERO_FLAG) == 0) {
+      Return(memory);
+      *cycle_count = ops[code].long_cycle_count;
+    }
     break;
   case 0xc1:
     Pop(&bc_, memory);
     break;
   case 0xc2:
-    Jump((*f_ & ZERO_FLAG) == 0, memory);
-    break;
+    {
+      bool do_jump = (*f_ & ZERO_FLAG) == 0;
+      Jump(do_jump, memory);
+      if (do_jump) *cycle_count = ops[code].long_cycle_count;
+      break;
+    }
   case 0xc3:
     {
       uint16_t addr = Read16(pc_, memory);
       pc_ = addr;
     }
     break;
-  case 0xc4: CallA16((*f_ & ZERO_FLAG) == 0 , memory); break;
+  case 0xc4:
+    {
+      bool do_call = (*f_ & ZERO_FLAG) == 0 ;
+      CallA16(do_call, memory);
+      if (do_call) *cycle_count = ops[code].long_cycle_count;
+      break;
+    }
   case 0xc5:
     Push(bc_, memory);
     break;
@@ -758,30 +813,56 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     pc_++;
     break;
   case 0xc8:
-    if ((*f_ & ZERO_FLAG) > 0) Return(memory);
+    if ((*f_ & ZERO_FLAG) > 0) {
+      Return(memory);
+      *cycle_count = ops[code].long_cycle_count;
+    }
     break;
   case 0xc9:
     Return(memory);
     break;
   case 0xca:
-    Jump((*f_ & ZERO_FLAG) > 0, memory);
-    break;
+    {
+      bool do_jump = (*f_ & ZERO_FLAG) > 0;
+      Jump(do_jump, memory);
+      if (do_jump) *cycle_count = ops[code].long_cycle_count;
+      break;
+    }
   case 0xcb:
     {
       // Consume the code and advance the program counter.
       // TODO: cycle count
       uint8_t code = Read8(pc_, memory);
       pc_++;
+      *cycle_count = cb_ops[code].short_cycle_count;
       return RunPrefix(code, memory);
     }
     break;  // Unreachable.
-  case 0xcc: CallA16((*f_ & ZERO_FLAG) != 0, memory); break;
+  case 0xcc:
+    {
+      bool do_call = (*f_ & ZERO_FLAG) != 0;
+      CallA16(do_call, memory);
+      if (do_call) *cycle_count = ops[code].long_cycle_count;
+      break;
+    }
   case 0xcd: CallA16(true, memory); break;
-  case 0xd0: if ((*f_ & CARRY_FLAG) == 0) Return(memory); break;
+  case 0xd0:
+    if ((*f_ & CARRY_FLAG) == 0) {
+      Return(memory);
+      *cycle_count = ops[code].long_cycle_count;
+    }
+    break;
   case 0xd1:
     Pop(&de_, memory);
     break;
-  case 0xd2: Jump((*f_ & CARRY_FLAG) == 0, memory); break;
+  case 0xd2:
+    {
+      bool do_jump = (*f_ & CARRY_FLAG) == 0;
+      Jump(do_jump, memory);
+      if (do_jump) *cycle_count = ops[code].long_cycle_count;
+      break;
+    }
+  // TODO: long cycle count 0xd4
   case 0xd5:
     Push(de_, memory);
     break;
@@ -789,11 +870,18 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     Sub8(a_, Read8(pc_, memory));
     pc_++;
     break;
-  case 0xd8: if ((*f_ & CARRY_FLAG) > 0) Return(memory); break;
+  case 0xd8:
+    if ((*f_ & CARRY_FLAG) > 0) {
+      Return(memory);
+      *cycle_count = ops[code].long_cycle_count;
+    }
+    break;
   case 0xd9:
     Return(memory);
     ime_ = true;  // Re-enable interrupts.
     break;
+  // TODO: long cycle count 0xda
+  // TODO: long cycle count 0xdc
   case 0xde:
     {
       uint8_t value = Read8(pc_, memory);
@@ -891,8 +979,6 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     ERRORF("UNIMPLEMENTED (0x%02x): %s", code & 0xff, ops[code].debug.c_str());
     return false;
   }
-
-  *cycle_count = ops[code].cycle_count;
 
   return true;
 }

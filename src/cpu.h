@@ -77,13 +77,13 @@ class CPU {
         }
       }
 
+      clock_->Tick(cycle_count);
+
       if (ime_) {
         if (!ProcessInterrupts(memory)) {
           break;
         }
       }
-
-      clock_->Tick(cycle_count);
 
       while(paused_.load()) {
         std::this_thread::sleep_for (std::chrono::milliseconds(1));
