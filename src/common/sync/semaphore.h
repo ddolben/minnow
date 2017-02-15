@@ -1,5 +1,5 @@
-#ifndef COMMON_SEMAPHORE_H_
-#define COMMON_SEMAPHORE_H_
+#ifndef COMMON_SYNC_SEMAPHORE_H_
+#define COMMON_SYNC_SEMAPHORE_H_
 
 #include <chrono>
 #include <condition_variable>
@@ -45,4 +45,4 @@ class Semaphore {
   int count_;
 };
 
-#endif  // COMMON_SEMAPHORE_H_
+#endif  // COMMON_SYNC_SEMAPHORE_H_
