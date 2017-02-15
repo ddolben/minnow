@@ -66,3 +66,51 @@ performance out of hardware on older consoles. It's humbling to think that,
 while I sit here struggling to write stuff in C++ for moderm CPUs, they built
 that game on a 4 MHz processor with a finicky LCD controller, all without
 modern development tools. Hats off to you, Nintendo.
+
+### Impactful Performance Improvements
+
+It's always amazing to me how a very small change in code can result in a massive improvement in performance. Finding low-hanging fruit like these depends pretty heavily on use of the right toolset. Today, I discovered the "Instruments" application built into Mac OSX. It's awesome, you should check it out if you do any development on OSX.
+
+#### std::function copy constructor
+
+I used its Time Profiler (a sampling profiler) to take a look at which functions were taking up more than their fair share of time in the Minnow application. After a very short amount of digging, I came up with one culprit:
+
+![std::function timing](std_function_timing.png)
+
+You can see in the fourth line above that the constructor for `std::function`, called from within `Clock::Tick`, was taking up 29.5% of the CPU time. This seemed pretty odd to me, so I took a look at the code for `Clock::Tick`, and found this:
+
+```
+void Tick(int cycles) {
+  for (std::function<void(int)> f : callbacks_) {
+    f(cycles);
+  }
+  ...
+}
+```
+
+It's iterating through the callbacks_ vector, but it's _copying_ each `std::function` object into a stack variable `f`! Since `std::function` has some magic going on within it, and it stores a decent amount of data, this copy constructor was taking a _very_ long time to run. Not surprisingly, adding a single `&` character had a huge impact on the emulator's performance.
+
+```
+void Tick(int cycles) {
+  for (std::function<void(int)> &f : callbacks_) {
+    f(cycles);
+  }
+  ...
+}
+```
+
+It managed to bump Minnow's unthrottled framerate from ~55fps to ~105fps. **Thats a roughly 2x speed improvement with a single character of code.**
+
+#### std::atomic vs. std::mutex
+
+I sat in amazement for a little while, and then dug back in to see if I could find any more low-hanging fruit. To my surprise, another fairly obvious culprit:
+
+![std::mutex timing](mutex_timing.png)
+
+You can see that CPU::IsRunning() is now taking up 27.2% of the host CPU's time, with most of it going to locking and unlocking the mutex. Not ideal. After a tiny bit of research, I found out that, while its actual performance is compiler- and architecture- dependent, `std::atomic<bool>` is a hell of a lot faster than `std::mutex`, and is practical for protecting primitives like `bool`'s. So, I swapped the mutex code out for atomics, and voila, another huge speed bump. I'm now seeing 130fps unthrottled framerate in Minnow, which, in my opinion, is pretty good.
+
+#### Moral of the Story
+
+The morla of the story is this: if you have access to one, you should _absolutely_ use a profiler at some point in the development cycle if you care about fast code. They're pretty easy to use, and can point out obvious performance improvements that can sometimes be as simple as adding one character.
+
+I could probably go digging through the timing profile for the next few days, eking out little performance improvements here and there, but for now, I'm pretty stoked with a 55 to 130 fps improvement. There's still lots of other stuff to do.
