@@ -4,17 +4,20 @@
 
 namespace dgb {
 
-Display::Display(int width, int height, std::shared_ptr<Clock> clock,
-    std::shared_ptr<Interrupts> interrupts,
+Display::Display(int width, int height, bool show_debug_windows,
+    std::shared_ptr<Clock> clock, std::shared_ptr<Interrupts> interrupts,
     std::shared_ptr<WindowController> window_controller)
-    : interrupts_(interrupts), window_controller_(window_controller) {
+    : show_debug_windows_(show_debug_windows), interrupts_(interrupts),
+      window_controller_(window_controller) {
 
-  tileset_window_.reset(new Window(256, 384, 128, 192, "Minnow Tileset"));
-  window_controller_->AddWindow(tileset_window_);
+  if (show_debug_windows_) {
+    tileset_window_.reset(new Window(256, 384, 128, 192, "Minnow Tileset"));
+    window_controller_->AddWindow(tileset_window_);
 
-  background_window_.reset(new Window(
-        512, 512, 256, 256, "Minnow Background"));
-  window_controller_->AddWindow(background_window_);
+    background_window_.reset(new Window(
+          512, 512, 256, 256, "Minnow Background"));
+    window_controller_->AddWindow(background_window_);
+  }
 
   window_.reset(new Window(
         width, height, kDisplayWidth, kDisplayHeight, "Minnow Emulator"));
@@ -157,44 +160,46 @@ uint8_t Display::ReadSprite8(uint16_t offset) {
 }
 
 void Display::Loop() {
-  // Draw the tileset out to the second window.
-  tileset_window_->SetRenderFunc([this]{
-    int tx, ty;
-    for (int t = 0; t < 384; ++t) {
-      tx = t % 16;
-      ty = t / 16;
-      Tile *tile = reinterpret_cast<Tile*>(this->vram_ + (t * 16));
+  if (show_debug_windows_) {
+    // Draw the tileset out to the second window.
+    tileset_window_->SetRenderFunc([this]{
+      int tx, ty;
+      for (int t = 0; t < 384; ++t) {
+        tx = t % 16;
+        ty = t / 16;
+        Tile *tile = reinterpret_cast<Tile*>(this->vram_ + (t * 16));
 
-      for (int y = 0; y < 8; ++y) {
-        for (int x = 0; x < 8; ++x) {
-          uint8_t *b = tile->data + (y*2);
-          uint8_t value = ((*b >> (7-x)) & 0x1) | (((*(b+1) >> (7-x)) & 0x1) << 1);
-          this->tileset_window_->SetPixel(
-              (tx*8 + x),
-              (ty*8 + y),
-              this->Color(value));
+        for (int y = 0; y < 8; ++y) {
+          for (int x = 0; x < 8; ++x) {
+            uint8_t *b = tile->data + (y*2);
+            uint8_t value = ((*b >> (7-x)) & 0x1) | (((*(b+1) >> (7-x)) & 0x1) << 1);
+            this->tileset_window_->SetPixel(
+                (tx*8 + x),
+                (ty*8 + y),
+                this->Color(value));
+          }
         }
       }
-    }
-  });
+    });
 
-  background_window_->SetRenderFunc([this]{
-    int tile_y, tile_x;
-    for (int y = 0; y < 256; ++y) {
-      tile_y = y % 8;
-      for (int x = 0; x < 256; ++x) {
-        tile_x = x % 8;
+    background_window_->SetRenderFunc([this]{
+      int tile_y, tile_x;
+      for (int y = 0; y < 256; ++y) {
+        tile_y = y % 8;
+        for (int x = 0; x < 256; ++x) {
+          tile_x = x % 8;
 
-        Tile *tile = this->GetTile(x/8, y/8,
-            ((control_ & BG_TILE_MAP_SELECT_BIT) == 0));
-        uint8_t *b = tile->data + (tile_y*2);
-        uint8_t value =
-          ((*b >> (7-tile_x)) & 0x1) | (((*(b+1) >> (7-tile_x)) & 0x1) << 1);
+          Tile *tile = this->GetTile(x/8, y/8,
+              ((control_ & BG_TILE_MAP_SELECT_BIT) == 0));
+          uint8_t *b = tile->data + (tile_y*2);
+          uint8_t value =
+            ((*b >> (7-tile_x)) & 0x1) | (((*(b+1) >> (7-tile_x)) & 0x1) << 1);
 
-        this->background_window_->SetPixel(x, y, this->Color(value));
+          this->background_window_->SetPixel(x, y, this->Color(value));
+        }
       }
-    }
-  });
+    });
+  }
 
   // Loop.
   while (window_controller_->Tick()) {}

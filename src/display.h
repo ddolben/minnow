@@ -103,8 +103,8 @@ class Display {
   const static int kDisplayWidth = 160;
   const static int kDisplayHeight = 144;
 
-  Display(int width, int height, std::shared_ptr<Clock> clock,
-          std::shared_ptr<Interrupts> interrupts,
+  Display(int width, int height, bool show_debug_window,
+          std::shared_ptr<Clock> clock, std::shared_ptr<Interrupts> interrupts,
           std::shared_ptr<WindowController> window_controller);
 
   void AdvanceClock(int cycles);
@@ -164,6 +164,9 @@ class Display {
   // Renders the current scanline (determined by LCDCY()) and writes it out to
   // the window's framebuffer.
   void RenderScanline();
+
+  // Determines whether to show windows other than the main game window.
+  const bool show_debug_windows_ = false;
 
   int y_compare_ = 0;
   int previous_scanline_ = -1;

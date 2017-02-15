@@ -43,6 +43,7 @@ Flag<std::string> FLAG_bootloader("bootloader", "");
 Flag<std::string> FLAG_breakpoint("breakpoint", "");
 Flag<std::string> FLAG_breakpoint_opcode("breakpoint_opcode", "");
 Flag<bool> FLAG_print_fps("print_fps", false);
+Flag<bool> FLAG_debug_windows("debug_windows", false);
 
 void ProcessArgs(int *argc, char **argv[]) {
   ParseFlags(argc, argv);
@@ -66,7 +67,7 @@ int main(int argc, char *argv[]) {
   window_controller->set_print_fps(*FLAG_print_fps);
   std::shared_ptr<Display> display(
       new Display(Display::kDisplayWidth*2, Display::kDisplayHeight*2,
-                  clock, interrupts, window_controller));
+                  *FLAG_debug_windows, clock, interrupts, window_controller));
   std::shared_ptr<Cartridge> cartridge(new Cartridge(args.filename));
   Memory memory(cartridge, display, input, timers);
   CPU cpu(clock, interrupts);
