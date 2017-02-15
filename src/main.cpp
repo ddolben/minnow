@@ -15,6 +15,7 @@
 #include "logging.h"
 #include "memory.h"
 #include "window.h"
+#include "window_controller.h"
 
 
 using dgb::Cartridge;

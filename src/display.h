@@ -9,6 +9,7 @@
 #include "interrupts.h"
 #include "logging.h"
 #include "window.h"
+#include "window_controller.h"
 
 
 namespace dgb {
@@ -99,90 +100,14 @@ class Display {
   const static int kVBlankStart = kVisibleLineCount * kLineCycleCount;
   const static int kVBlankCycleCount = 4560;
 
-  static const int kDisplayWidth = 160;
-  static const int kDisplayHeight = 144;
+  const static int kDisplayWidth = 160;
+  const static int kDisplayHeight = 144;
 
   Display(int width, int height, std::shared_ptr<Clock> clock,
-      std::shared_ptr<Interrupts> interrupts,
-      std::shared_ptr<WindowController> window_controller)
-      : interrupts_(interrupts), window_controller_(window_controller) {
+          std::shared_ptr<Interrupts> interrupts,
+          std::shared_ptr<WindowController> window_controller);
 
-    tileset_window_.reset(new Window(256, 384, 128, 192, "Minnow Tileset"));
-    window_controller_->AddWindow(tileset_window_);
-
-    background_window_.reset(new Window(
-          512, 512, 256, 256, "Minnow Background"));
-    window_controller_->AddWindow(background_window_);
-
-    window_.reset(new Window(
-          width, height, kDisplayWidth, kDisplayHeight, "Minnow Emulator"));
-    window_controller_->AddWindow(window_);
-
-    clock->RegisterObserver([this](int cycles) {
-      this->AdvanceClock(cycles);
-    });
-  }
-
-  void AdvanceClock(int cycles) {
-    cycle_clock_ = (cycle_clock_ + cycles) % kCycleLength;
-    // Zero the mode bits in the LCD status register.
-    status_ &= ~0x03;
-    // Update the mode bits in the LCD status register.
-    if (cycle_clock_ >= kVBlankStart) {
-      status_ |= MODE_VBLANK_BITS;
-    } else if ((cycle_clock_ % kLineCycleCount) >= 356) {
-      status_ |= MODE_HBLANK_BITS;
-    } else if ((cycle_clock_ % kLineCycleCount) >= 80) {
-      status_ |= MODE_DATA_TRANSFER_BITS;
-    } else {
-      status_ |= MODE_OAM_SEARCH_BITS;
-    }
-
-    // TODO: LCDSTAT interrupts
-
-    int line_number = LCDCY();
-
-    // Determine whether it's time to render this scanline.
-    // Scanlines are rendered a certain number of cycles into a particular LCD
-    // line. That number depends on the number of sprites present in the row. I
-    // don't know the exact number, but I know that the upper bound on the
-    // number of cycles is 297, so wait until we are at least 297 cycles into
-    // the scanline before transferring it to the framebuffer.
-    if ((previous_scanline_ < line_number ||
-         (line_number <= 0 && previous_scanline_ >= 143)) &&
-        line_number < 144 && (cycle_clock_ % kLineCycleCount) > 83) {
-      previous_scanline_ = line_number;
-
-      // Render the current scanline out to the framebuffer.
-      RenderScanline();
-    }
-
-    // Each time the LCD Y-coordinate advances, render the next line to the
-    // display.
-    if (line_number != y_compare_) {
-      y_compare_ = line_number;
-
-      // Check to see if LY == LYC.
-      if (line_number == lyc_) {
-        status_ |= COINCIDENCE_FLAG_BIT;
-        // If the coincidence interrupt is enabled, signal an LCD_STAT
-        // interrupt.
-        if ((status_ & COINCIDENCE_INTERRUPT_BIT) != 0) {
-          interrupts_->SignalInterrupt(INTERRUPT_LCD_STAT);
-        }
-      } else {
-        status_ &= (~COINCIDENCE_FLAG_BIT);
-      }
-
-      // Check if we've just entered line 144, or began the VBlank.
-      if (line_number == 144) {
-        interrupts_->SignalInterrupt(INTERRUPT_VBLANK);
-
-        // Tell the window controller to draw the frame to the screen.
-        window_controller_->SignalFrame();
-      }
-    }
-  }
+  void AdvanceClock(int cycles);
 
   // LCDC Y-coordinate value.
   uint8_t LCDCY() {
@@ -196,33 +121,12 @@ class Display {
   }
 
   uint8_t Control() { return control_; }
-  void SetControl(uint8_t value) {
-    // TODO: turn off display when bit 7 goes to 0, but only during VBLANK
-    if ((value & OBJ_SIZE_BIT) != 0) {
-      FATALF("Unimplemented control bit: sprite size");
-    }
-    control_ = value;
-  }
+  void SetControl(uint8_t value);
 
   uint8_t Status() { return status_; }
-  void SetStatus(uint8_t value) {
-    if ((value & (~(COINCIDENCE_INTERRUPT_BIT))) != 0) {
-      FATALF("Unimplemented status bits: 0x%02x", value);
-    }
-    // Bits 0-2 are read-only.
-    status_ = (value & 0xf8) | (status_ & 0x07);
-  }
+  void SetStatus(uint8_t value);
 
-  uint32_t Color(uint8_t value) {
-    int shift = value*2;
-    uint8_t idx = (palette_ >> shift) & 0x3;
-    switch (idx) {
-    case 0: return 0xffffffff;
-    case 1: return 0xaaaaaaaa;
-    case 2: return 0x44444444;
-    }
-    return 0;
-  }
+  uint32_t Color(uint8_t value);
 
   void SetPalette(uint8_t value) {
     palette_ = value;
@@ -245,49 +149,15 @@ class Display {
 
   // Returns one of the tiles in the 32 x 32 tileset, indexed by x and y
   // coordinates. Looks into the tilemap and returns the corresponding tile.
-  Tile *GetTile(int x, int y, bool use_first_tilemap) {
-    CHECK(0 <= x && x <= 32);
-    CHECK(0 <= y && y <= 32);
-    // TODO: this mutex lock doesn't actually protect against accessing the
-    // tile's memory after this function returns.
-    // TODO: this mutex seems to be slowing things down A LOT, probably because
-    // it's called at every pixel.
-    //std::lock_guard<std::mutex> lock(mutex_);
-    uint8_t tile_id = (use_first_tilemap)
-        ? tilemap_[y*32 + x]
-        : tilemap_[y*32 + x + 0x400];
-    if ((control_ & TILE_DATA_SELECT_BIT) == 0) {
-      // In this case, the tile_id is interpreted as a signed value, and 0x9000
-      // is tile_id = 0.
-      int8_t signed_tile_id = reinterpret_cast<int8_t&>(tile_id);
-      return reinterpret_cast<struct Tile*>(
-          vram_ + 0x1000 + (signed_tile_id * 16));
-    }
-    return reinterpret_cast<struct Tile*>(vram_ + (tile_id * 16));
-  }
+  Tile *GetTile(int x, int y, bool use_first_tilemap);
 
-  uint8_t Read8(uint16_t offset) {
-    CHECK(0 <= offset && offset <= kVRAMSize - 1);
-    std::lock_guard<std::mutex> lock(mutex_);
-    return vram_[offset];
-  }
+  uint8_t Read8(uint16_t offset);
+  void Write8(uint16_t offset, uint8_t value);
+  void WriteSprite8(uint16_t offset, uint8_t value);
+  uint8_t ReadSprite8(uint16_t offset);
 
-  void Write8(uint16_t offset, uint8_t value) {
-    CHECK(0 <= offset && offset <= kVRAMSize - 1);
-    std::lock_guard<std::mutex> lock(mutex_);
-    vram_[offset] = value;
-  }
-
-  void WriteSprite8(uint16_t offset, uint8_t value) {
-    CHECK(0 <= offset && offset <= kSpriteAttributeTableSize);
-    sprite_attributes_[offset] = value;
-  }
-
-  uint8_t ReadSprite8(uint16_t offset) {
-    CHECK(0 <= offset && offset <= kSpriteAttributeTableSize);
-    return sprite_attributes_[offset];
-  }
-
+  // Starts running the display loop. This function will not return until the
+  // display is finished.
   void Loop();
 
  private:

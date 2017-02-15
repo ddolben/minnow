@@ -10,6 +10,45 @@
 
 namespace dgb {
 
+CPU::CPU(std::shared_ptr<Clock> clock, std::shared_ptr<Interrupts> interrupts)
+    : clock_(clock), interrupts_(interrupts) {
+  interrupts_->RegisterInterruptHandler([this](uint8_t type) {
+    interrupt_request_ |= type;
+  });
+}
+
+void CPU::StartLoop(Memory *memory) {
+  thread_ = std::thread([this, memory]{
+    this->Loop(memory);
+  });
+}
+
+void CPU::Loop(Memory *memory) {
+  int cycle_count;
+  while (IsRunning()) {
+    if (halted_) {
+      // If the CPU is halted, make sure we continue advancing the clock.
+      cycle_count = 1;
+    } else {
+      if (!RunOp(memory, &cycle_count)) {
+        debug_ = true;
+      }
+    }
+
+    clock_->Tick(cycle_count);
+
+    if (ime_) {
+      if (!ProcessInterrupts(memory)) {
+        break;
+      }
+    }
+
+    while(paused_.load()) {
+      std::this_thread::sleep_for (std::chrono::milliseconds(1));
+    }
+  }
+}
+
 inline uint8_t CPU::Read8(uint16_t address, Memory *memory) {
   if (address == breakpoint_read_) { debug_ = true; }
   CHECK(memory != nullptr);
@@ -405,6 +444,15 @@ std::string OpToString(const OpInstance &oi) {
   return std::string(buf);
 }
 }  // namespace
+
+void CPU::PrintRegisters() {
+  DEBUGF("  PC: 0x%04x", 0xffff & pc_);
+  DEBUGF("  SP: 0x%04x", 0xffff & sp_);
+  DEBUGF("  AF: 0x%04x", 0xffff & af_);
+  DEBUGF("  BC: 0x%04x", 0xffff & bc_);
+  DEBUGF("  DE: 0x%04x", 0xffff & de_);
+  DEBUGF("  HL: 0x%04x", 0xffff & hl_);
+}
 
 bool CPU::RunOp(Memory *memory, int *cycle_count) {
   CHECK(memory != nullptr);

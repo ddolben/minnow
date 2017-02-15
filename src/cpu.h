@@ -25,12 +25,7 @@ const uint16_t kInterruptHandlers[5] = {
 
 class CPU {
  public:
-  CPU(std::shared_ptr<Clock> clock, std::shared_ptr<Interrupts> interrupts)
-      : clock_(clock), interrupts_(interrupts) {
-    interrupts_->RegisterInterruptHandler([this](uint8_t type) {
-      interrupt_request_ |= type;
-    });
-  }
+  CPU(std::shared_ptr<Clock> clock, std::shared_ptr<Interrupts> interrupts);
 
   uint8_t Read8(uint16_t address, Memory *memory);
   uint16_t Read16(uint16_t address, Memory *memory);
@@ -39,17 +34,9 @@ class CPU {
 
   bool ProcessInterrupts(Memory *memory);
 
+  void PrintRegisters();
   bool RunOp(Memory *memory, int *cycle_count);
   bool RunPrefix(uint8_t code, Memory *memory);
-
-  void PrintRegisters() {
-    DEBUGF("  PC: 0x%04x", 0xffff & pc_);
-    DEBUGF("  SP: 0x%04x", 0xffff & sp_);
-    DEBUGF("  AF: 0x%04x", 0xffff & af_);
-    DEBUGF("  BC: 0x%04x", 0xffff & bc_);
-    DEBUGF("  DE: 0x%04x", 0xffff & de_);
-    DEBUGF("  HL: 0x%04x", 0xffff & hl_);
-  }
 
   void Wait() {
     thread_.join();
@@ -65,38 +52,11 @@ class CPU {
     return is_running_;
   }
 
-  void Loop(Memory *memory) {
-    int cycle_count;
-    while (IsRunning()) {
-      if (halted_) {
-        // If the CPU is halted, make sure we continue advancing the clock.
-        cycle_count = 1;
-      } else {
-        if (!RunOp(memory, &cycle_count)) {
-          debug_ = true;
-        }
-      }
-
-      clock_->Tick(cycle_count);
-
-      if (ime_) {
-        if (!ProcessInterrupts(memory)) {
-          break;
-        }
-      }
-
-      while(paused_.load()) {
-        std::this_thread::sleep_for (std::chrono::milliseconds(1));
-      }
-    }
-  }
-
   // Starts the CPU loop in a separate thread.
-  void StartLoop(Memory *memory) {
-    thread_ = std::thread([this, memory]{
-      this->Loop(memory);
-    });
-  }
+  // TODO: make memory an injected instance variable
+  void StartLoop(Memory *memory);
+  // Runs the CPU loop on the calling thread.
+  void Loop(Memory *memory);
 
   void set_pc(uint16_t value) { pc_ = value; }
   uint8_t pc() { return pc_; }
