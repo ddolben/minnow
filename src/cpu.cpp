@@ -31,7 +31,7 @@ void CPU::Loop(Memory *memory) {
       cycle_count = 1;
     } else {
       if (!RunOp(memory, &cycle_count)) {
-        debug_ = true;
+        set_debug(true);
       }
     }
 
@@ -50,7 +50,7 @@ void CPU::Loop(Memory *memory) {
 }
 
 inline uint8_t CPU::Read8(uint16_t address, Memory *memory) {
-  if (address == breakpoint_read_) { debug_ = true; }
+  if (address == breakpoint_read_) { set_debug(true); }
   CHECK(memory != nullptr);
 
   switch (address) {
@@ -64,7 +64,7 @@ inline uint8_t CPU::Read8(uint16_t address, Memory *memory) {
 }
 
 inline uint16_t CPU::Read16(uint16_t address, Memory *memory) {
-  if (address == breakpoint_read_) { debug_ = true; }
+  if (address == breakpoint_read_) { set_debug(true); }
   CHECK(memory != nullptr);
 
   uint16_t value;
@@ -75,7 +75,7 @@ inline uint16_t CPU::Read16(uint16_t address, Memory *memory) {
 }
 
 inline void CPU::Write8(uint16_t address, uint8_t value, Memory *memory) {
-  if (address == breakpoint_write_) { debug_ = true; }
+  if (address == breakpoint_write_) { set_debug(true); }
   CHECK(memory != nullptr);
 
   switch (address) {
@@ -97,7 +97,7 @@ inline void CPU::Write8(uint16_t address, uint8_t value, Memory *memory) {
 }
 
 inline void CPU::Write16(uint16_t address, uint16_t value, Memory *memory) {
-  if (address == breakpoint_write_) { debug_ = true; }
+  if (address == breakpoint_write_) { set_debug(true); }
   CHECK(memory != nullptr);
 
   uint8_t *ptr = reinterpret_cast<uint8_t*>(&value);

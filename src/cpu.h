@@ -5,7 +5,6 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
-#include <mutex>
 #include <thread>
 
 #include "clock.h"
@@ -38,19 +37,9 @@ class CPU {
   bool RunOp(Memory *memory, int *cycle_count);
   bool RunPrefix(uint8_t code, Memory *memory);
 
-  void Wait() {
-    thread_.join();
-  }
-
-  void Kill() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    is_running_ = false;
-  }
-
-  bool IsRunning() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return is_running_;
-  }
+  void Wait() { thread_.join(); }
+  void Kill() { is_running_.store(false); }
+  bool IsRunning() { return is_running_.load(); }
 
   // Starts the CPU loop in a separate thread.
   // TODO: make memory an injected instance variable
@@ -67,14 +56,8 @@ class CPU {
   void set_paused(bool value) { paused_.store(value); }
   bool paused() { return paused_.load(); }
 
-  void set_debug(bool value) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    debug_ = value;
-  }
-  bool debug() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return debug_;
-  }
+  void set_debug(bool value) { debug_.store(value); }
+  bool debug() { return debug_.load(); }
 
  private:
   enum FlagsMask {
@@ -124,15 +107,11 @@ class CPU {
   uint8_t SetBit(uint8_t value, unsigned int bit_index);
   uint8_t ResetBit(uint8_t value, unsigned int bit_index);
 
-  std::shared_ptr<Clock> clock_;
-  std::shared_ptr<Interrupts> interrupts_;
-
   std::thread thread_;
-  std::mutex mutex_;
-  bool is_running_ = true;
+  std::atomic<bool> is_running_{true};
   std::atomic<bool> paused_{false};
+  std::atomic<bool> debug_{false};
   bool halted_ = false;
-  bool debug_ = false;
   // Memory address at which to break.
   int64_t breakpoint_ = -1;
   // Opcode at which to break (it's actually just a uint8, but expanding to
@@ -177,6 +156,9 @@ class CPU {
   // Interrupt registers.
   uint8_t interrupt_request_ = 0;  // 0xFF0F
   uint8_t interrupt_enable_ = 0;  // 0xFFFF
+
+  std::shared_ptr<Clock> clock_;
+  std::shared_ptr<Interrupts> interrupts_;
 };
 
 }  // namespace dgb
