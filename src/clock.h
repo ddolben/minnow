@@ -16,7 +16,7 @@ class Clock {
   Clock(bool throttle) : throttle_(throttle) {}
 
   void Tick(int cycles) {
-    for (std::function<void(int)> f : callbacks_) {
+    for (std::function<void(int)> &f : callbacks_) {
       f(cycles);
     }
 

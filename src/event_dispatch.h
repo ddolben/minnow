@@ -29,7 +29,7 @@ class EventDispatch {
  public:
   void FireEvent(const Event &event) {
     if (observers_.count(event.code()) == 0) return;
-    for (Observer observer : observers_[event.code()]) {
+    for (Observer &observer : observers_[event.code()]) {
       observer(event);
     }
   }
