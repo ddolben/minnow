@@ -44,6 +44,9 @@ Flag<std::string> FLAG_breakpoint("breakpoint", "");
 Flag<std::string> FLAG_breakpoint_opcode("breakpoint_opcode", "");
 Flag<bool> FLAG_print_fps("print_fps", false);
 Flag<bool> FLAG_debug_windows("debug_windows", false);
+// Throttle the CPU to run at native speed. Set to false to run as fast as
+// possible.
+Flag<bool> FLAG_throttle_cpu("throttle_cpu", true);
 
 void ProcessArgs(int *argc, char **argv[]) {
   ParseFlags(argc, argv);
@@ -58,7 +61,7 @@ int main(int argc, char *argv[]) {
 
   //std::shared_ptr<EventDispatch> dispatch(new EventDispatch());
   std::shared_ptr<EventDispatch> dispatch = dgb::GlobalDispatch();
-  std::shared_ptr<Clock> clock(new Clock());
+  std::shared_ptr<Clock> clock(new Clock(*FLAG_throttle_cpu));
   std::shared_ptr<Interrupts> interrupts(new Interrupts());
   std::shared_ptr<Timers> timers(new Timers(clock, interrupts));
   std::shared_ptr<Input> input(new Input());
