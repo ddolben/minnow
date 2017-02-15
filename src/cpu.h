@@ -10,7 +10,7 @@
 
 #include "clock.h"
 #include "interrupts.h"
-#include "logging.h"
+#include "common/logging.h"
 #include "memory.h"
 
 

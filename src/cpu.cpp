@@ -5,7 +5,7 @@
 #include <functional>
 #include <iostream>
 
-#include "logging.h"
+#include "common/logging.h"
 #include "memory.h"
 
 namespace dgb {

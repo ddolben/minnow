@@ -3,7 +3,7 @@
 #include <map>
 #include <string>
 
-#include "logging.h"
+#include "common/logging.h"
 
 namespace dgb {
 

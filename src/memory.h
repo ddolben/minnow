@@ -10,7 +10,7 @@
 #include "cartridge.h"
 #include "display.h"
 #include "input.h"
-#include "logging.h"
+#include "common/logging.h"
 #include "mmapfile.h"
 #include "timers.h"
 

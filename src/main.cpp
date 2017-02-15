@@ -12,7 +12,7 @@
 #include "display.h"
 #include "event_dispatch.h"
 #include "fixes.h"
-#include "logging.h"
+#include "common/logging.h"
 #include "memory.h"
 #include "window.h"
 #include "window_controller.h"
