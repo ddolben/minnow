@@ -151,6 +151,10 @@ class MBC3 : public MemoryBankController {
       }
       return *(reinterpret_cast<uint8_t*>(rom_->memory()) + bank_offset);
     }
+    if (0xA000 <= offset && offset < 0xC000) {
+      uint32_t bank_offset = (0x2000 * ram_bank_) + (offset - 0xA000);
+      return ram_[bank_offset];
+    }
 
     FATALF("TODO: MBC3 unimplemented read offset: 0x%04x", offset);
     return 0;
@@ -169,27 +173,28 @@ class MBC3 : public MemoryBankController {
       if (rom_bank_ == 0) rom_bank_ = 1;
       return;
     }
-    //if (0x4000 <= offset && offset < 0x6000) {
-    //  // RAM bank, or upper 2 bits of ROM bank.
-    //  rom_bank_ = (rom_bank_ & 0x1f) | (value & 0xe0);
-    //  if (rom_bank_ == 0 || rom_bank_ == 20 ||
-    //      rom_bank_ == 40 || rom_bank_ == 60) {
-    //    rom_bank_ += 1;
-    //  }
-    //  return;
-    //}
-    //if (0xA000 <= offset && offset < 0xC000) {
-    //  // TODO: RAM
-    //  ERRORF("TODO: MBC1: RAM Write to Cartridge: (0x%04x) <- 0x%02x",
-    //      offset & 0xffff, value & 0xff);
-    //  return;
-    //}
+    if (0x4000 <= offset && offset < 0x6000) {
+      if (value > 0x3) { FATALF("TODO: implement MBC3 RTC registers"); }
+
+      // RAM bank number 0x00-0x03.
+      ram_bank_ = (value & 0x3);
+      return;
+    }
+    if (0xA000 <= offset && offset < 0xC000) {
+      uint32_t bank_offset = (0x2000 * ram_bank_) + (offset - 0xA000);
+      ram_[bank_offset] = value;
+      return;
+    }
     FATALF("MBC3: Unimplemented Write to Cartridge: (0x%04x) <- 0x%02x",
         offset & 0xffff, value & 0xff);
   }
 
  private:
   int rom_bank_ = 0;
+  int ram_bank_ = 0;
+
+  // 32kb of RAM.
+  uint8_t ram_[0x8000];
 };
 }  // namespace
 
