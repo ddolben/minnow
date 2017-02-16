@@ -180,7 +180,7 @@ inline void CPU::Add8(uint8_t *dest, uint8_t value) {
 
 inline void CPU::AddCarry8(uint8_t *dest, uint8_t value) {
   uint8_t carry = (*f_ & CARRY_FLAG) >> 4;
-  if (value == 0xff && carry > 0) FATALF("TODO: fix the ADC value overflow");
+  if (value == 0xff && carry > 0) ERRORF("TODO: fix the ADC value overflow");
   Add8(dest, value + carry);
 }
 
@@ -203,7 +203,7 @@ inline void CPU::Sub8(uint8_t *dest, uint8_t value) {
 
 inline void CPU::SubCarry8(uint8_t *dest, uint8_t value) {
   uint8_t carry = (*f_ & CARRY_FLAG) >> 4;
-  if (value == 0xff && carry > 0) FATALF("TODO: fix the SBC value overflow");
+  if (value == 0xff && carry > 0) ERRORF("TODO: fix the SBC value overflow");
   Sub8(dest, value + carry);
 }
 
@@ -617,6 +617,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
       if (do_jump) *cycle_count = ops[code].long_cycle_count;
       break;
     }
+  case 0x29: Add16(&hl_, hl_); break;
   case 0x2a:
     *a_ = Read8(hl_, memory);
     hl_ += 1;
@@ -663,6 +664,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x36:
     LoadData8ToMem(hl_, memory);
     break;
+  case 0x37: *f_ |= CARRY_FLAG; break;
   case 0x38:
     {
       bool do_jump = (*f_ & CARRY_FLAG) != 0;
@@ -1014,6 +1016,11 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     Or(Read8(pc_, memory));
     pc_++;
     break;
+  case 0xf8:
+    hl_ = sp_ + Read8(pc_, memory);
+    pc_++;
+    break;
+  case 0xf9: sp_ = hl_; break;
   case 0xfa:
     {
       uint16_t addr = Read16(pc_, memory);

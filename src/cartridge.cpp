@@ -135,6 +135,62 @@ class MBC1 : public MemoryBankController {
  private:
   int rom_bank_ = 0;
 };
+
+class MBC3 : public MemoryBankController {
+ public:
+  MBC3(std::shared_ptr<MMapFile> rom) : MemoryBankController(rom) {}
+
+  uint8_t Read8(uint16_t offset) override {
+    if (offset < 0x4000) {
+      return *(reinterpret_cast<uint8_t*>(rom_->memory()) + offset);
+    }
+    if (0x4000 <= offset && offset < 0x8000) {
+      uint32_t bank_offset = (0x4000 * rom_bank_) + (offset - 0x4000);
+      if (bank_offset >= rom_->size()) {
+        FATALF("Attempted to read past the end of the ROM file");
+      }
+      return *(reinterpret_cast<uint8_t*>(rom_->memory()) + bank_offset);
+    }
+
+    FATALF("TODO: MBC3 unimplemented read offset: 0x%04x", offset);
+    return 0;
+  }
+
+  void Write8(uint16_t offset, uint8_t value) override {
+    if (offset < 0x2000) {
+      // TODO: support enable/disable of RAM & RTC so we know when to save to
+      // disk
+      return;
+    }
+
+    if (0x2000 <= offset && offset < 0x4000) {
+      // All 7 bits of rom bank.
+      rom_bank_ = value & 0x7f;
+      if (rom_bank_ == 0) rom_bank_ = 1;
+      return;
+    }
+    //if (0x4000 <= offset && offset < 0x6000) {
+    //  // RAM bank, or upper 2 bits of ROM bank.
+    //  rom_bank_ = (rom_bank_ & 0x1f) | (value & 0xe0);
+    //  if (rom_bank_ == 0 || rom_bank_ == 20 ||
+    //      rom_bank_ == 40 || rom_bank_ == 60) {
+    //    rom_bank_ += 1;
+    //  }
+    //  return;
+    //}
+    //if (0xA000 <= offset && offset < 0xC000) {
+    //  // TODO: RAM
+    //  ERRORF("TODO: MBC1: RAM Write to Cartridge: (0x%04x) <- 0x%02x",
+    //      offset & 0xffff, value & 0xff);
+    //  return;
+    //}
+    FATALF("MBC3: Unimplemented Write to Cartridge: (0x%04x) <- 0x%02x",
+        offset & 0xffff, value & 0xff);
+  }
+
+ private:
+  int rom_bank_ = 0;
+};
 }  // namespace
 
 Cartridge::Cartridge(const std::string &filename)
@@ -146,6 +202,9 @@ Cartridge::Cartridge(const std::string &filename)
       break;
     case 0x1:
       mbc_.reset(new MBC1(rom_));
+      break;
+    case 0x13:
+      mbc_.reset(new MBC3(rom_));
       break;
     default:
       FATALF("Unsupported cartridge type: 0x%02x", type_byte & 0xff);

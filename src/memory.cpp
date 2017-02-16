@@ -37,6 +37,8 @@ uint8_t *Memory::GetOffset(uint16_t offset) {
 
   } else if (offset < 0xE000) {  // Working RAM
     return &wram_[offset - 0xC000];
+  } else if (offset < 0xFE00) {  // Echo of working RAM C000-DDFF
+    return &wram_[offset - 0xE000];
   } else if (offset < 0xFF80) {
     // Fall through
   } else if (offset < 0xFFFF) {  // High RAM Area.
@@ -189,7 +191,7 @@ void Memory::WriteToDevice(uint16_t offset, uint8_t value) {
     bootstrap_is_mapped_ = false;
     return;
   }
-  if (offset == 0xff7f) {
+  if (offset == 0xff7c || offset == 0xff7d || offset == 0xff7e || offset == 0xff7f) {
     // TODO
     ERRORF("NOT IMPLEMENTED: write to device (0x%04x) <- 0x%04x",
         offset & 0xffff, value & 0xff);
@@ -200,7 +202,7 @@ void Memory::WriteToDevice(uint16_t offset, uint8_t value) {
     return;
   }
   // TODO
-  FATALF("NOT IMPLEMENTED: write to device (0x%04x) <- 0x%04x",
+  ERRORF("NOT IMPLEMENTED: write to device (0x%04x) <- 0x%04x",
       offset & 0xffff, value & 0xff);
 }
 

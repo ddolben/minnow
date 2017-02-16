@@ -34,6 +34,7 @@ class MMapFile {
   }
 
   void *memory() { return memory_; }
+  off_t size() { return size_; }
 
  private:
   int fd_ = -1;
