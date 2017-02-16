@@ -6,6 +6,7 @@
 #include <iostream>
 
 #include "common/logging.h"
+#include "common/string/string.h"
 #include "memory.h"
 
 namespace dgb {
@@ -50,8 +51,10 @@ void CPU::Loop(Memory *memory) {
 }
 
 inline uint8_t CPU::Read8(uint16_t address, Memory *memory) {
-  if (address == breakpoint_read_) { set_debug(true); }
   CHECK(memory != nullptr);
+  if (breakpoint_read_min_ <= address && address <= breakpoint_read_max_) {
+    set_debug(true);
+  }
 
   switch (address) {
     case kInterruptRequestAddress:
@@ -64,8 +67,10 @@ inline uint8_t CPU::Read8(uint16_t address, Memory *memory) {
 }
 
 inline uint16_t CPU::Read16(uint16_t address, Memory *memory) {
-  if (address == breakpoint_read_) { set_debug(true); }
   CHECK(memory != nullptr);
+  if (breakpoint_read_min_ <= address && address <= breakpoint_read_max_) {
+    set_debug(true);
+  }
 
   uint16_t value;
   uint8_t *ptr = reinterpret_cast<uint8_t*>(&value);
@@ -75,8 +80,11 @@ inline uint16_t CPU::Read16(uint16_t address, Memory *memory) {
 }
 
 inline void CPU::Write8(uint16_t address, uint8_t value, Memory *memory) {
-  if (address == breakpoint_write_) { set_debug(true); }
   CHECK(memory != nullptr);
+
+  if (breakpoint_write_min_ <= address && address <= breakpoint_write_max_) {
+    set_debug(true);
+  }
 
   switch (address) {
     case kInterruptRequestAddress:
@@ -97,8 +105,10 @@ inline void CPU::Write8(uint16_t address, uint8_t value, Memory *memory) {
 }
 
 inline void CPU::Write16(uint16_t address, uint16_t value, Memory *memory) {
-  if (address == breakpoint_write_) { set_debug(true); }
   CHECK(memory != nullptr);
+  if (breakpoint_write_min_ <= address && address <= breakpoint_write_max_) {
+    set_debug(true);
+  }
 
   uint8_t *ptr = reinterpret_cast<uint8_t*>(&value);
   memory->Write8(address, ptr[0]);
@@ -489,11 +499,25 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
         previous_debug_command_ = line;
       }
 
+      std::vector<std::string> splits = StringSplit(line, ' ');
+
       if (std::string("continue").compare(line.substr(0, 8)) == 0) {
         set_debug(false);
         break;
       }
-      if (std::string("print").compare(line.substr(0, 5)) == 0) {
+      if (std::string("print op ").compare(line.substr(0, 9)) == 0) {
+        int addr = stoi(splits[2], 0, 16);
+        if (addr > 0xffff) {
+          WARNINGF("Cannot read memory at address 0x%x", addr);
+        } else {
+          uint8_t read_code = Read8(addr, memory);
+          OpInstance read_oi = {};
+          read_oi.op = ops[read_code];
+          read_oi.data[0] = Read8(addr+1, memory);
+          read_oi.data[1] = Read8(addr+2, memory);
+          printf("[0x%04x]: %s\n", addr & 0xffff, OpToString(read_oi).c_str());
+        }
+      } else if (std::string("print").compare(line.substr(0, 5)) == 0) {
         int addr = stoi(line.substr(6), 0, 16);
         if (addr > 0xffff) {
           WARNINGF("Cannot read memory at address 0x%x", addr);
@@ -501,22 +525,28 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
           uint8_t val = Read8(addr, memory);
           printf("[0x%04x]: 0x%02x\n", addr & 0xffff, val & 0xff);
         }
-      } else if (std::string("break write").compare(line.substr(0, 11)) == 0) {
-        breakpoint_write_ = stoi(line.substr(12), 0, 16);
-        set_debug(false);
-        break;
-      } else if (std::string("break read").compare(line.substr(0, 10)) == 0) {
-        breakpoint_read_ = stoi(line.substr(11), 0, 16);
-        set_debug(false);
-        break;
+      } else if (std::string("break write ").compare(line.substr(0, 12)) == 0) {
+        breakpoint_write_min_ = stoi(splits[2], 0, 16);
+        if (splits.size() >= 4) {
+          breakpoint_write_max_ = stoi(splits[3], 0, 16);
+        } else {
+          breakpoint_write_max_ = breakpoint_write_min_;
+        }
+      } else if (std::string("break read ").compare(line.substr(0, 11)) == 0) {
+        breakpoint_read_min_ = stoi(splits[2], 0, 16);
+        if (splits.size() >= 4) {
+          breakpoint_read_max_ = stoi(splits[3], 0, 16);
+        } else {
+          breakpoint_read_max_ = breakpoint_read_min_;
+        }
       } else if (std::string("break op").compare(line.substr(0, 8)) == 0) {
         breakpoint_opcode_ = stoi(line.substr(9), 0, 16);
+      } else if (std::string("break prev").compare(line) == 0) {
+        breakpoint_ = previous_pc_;
         set_debug(false);
         break;
       } else if (std::string("break").compare(line.substr(0, 5)) == 0) {
         breakpoint_ = stoi(line.substr(6), 0, 16);
-        set_debug(false);
-        break;
       } else if (std::string("step").compare(line.substr(0, 4)) == 0) {
         break;
       } else if (std::string("quit").compare(line.substr(0, 4)) == 0) {

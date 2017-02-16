@@ -119,9 +119,11 @@ class CPU {
   // 16-bit signed allows for negative numbers to disable it).
   int16_t breakpoint_opcode_ = -1;
   // Memory write address at which to break (actually uint16).
-  int32_t breakpoint_write_ = -1;
+  int32_t breakpoint_write_min_ = -1;
+  int32_t breakpoint_write_max_ = -1;
   // Memory read address at which to break (actually uint16).
-  int32_t breakpoint_read_ = -1;
+  int32_t breakpoint_read_min_ = -1;
+  int32_t breakpoint_read_max_ = -1;
 
   uint16_t previous_pc_ = 0;
   std::string previous_debug_command_;
