@@ -102,6 +102,7 @@ class CPU {
   uint8_t RotateRightThroughCarry(uint8_t value);  // RR
   uint8_t ShiftLeft(uint8_t value);  // SLA
   void ShiftRight(uint8_t *value);  // SRL
+  uint8_t ShiftRightIntoCarry(uint8_t value);  // SRA
   uint8_t Swap(uint8_t value);
   void TestBit(uint8_t value, unsigned int bit_index);
   uint8_t SetBit(uint8_t value, unsigned int bit_index);

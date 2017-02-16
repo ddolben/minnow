@@ -14,6 +14,7 @@
 #include "fixes.h"
 #include "common/logging.h"
 #include "memory.h"
+#include "sound_controller.h"
 #include "window.h"
 #include "window_controller.h"
 
@@ -27,6 +28,7 @@ using dgb::EventDispatch;
 using dgb::Input;
 using dgb::Interrupts;
 using dgb::Memory;
+using dgb::SoundController;
 using dgb::Timers;
 using dgb::WindowController;
 
@@ -72,7 +74,8 @@ int main(int argc, char *argv[]) {
       new Display(Display::kDisplayWidth*2, Display::kDisplayHeight*2,
                   *FLAG_debug_windows, clock, interrupts, window_controller));
   std::shared_ptr<Cartridge> cartridge(new Cartridge(args.filename));
-  Memory memory(cartridge, display, input, timers);
+  std::shared_ptr<SoundController> sound_controller(new SoundController());
+  Memory memory(cartridge, display, input, timers, sound_controller);
   CPU cpu(clock, interrupts);
 
   dispatch->RegisterObserver(dgb::EVENT_START_DEBUGGER, [&cpu](const Event &event) {

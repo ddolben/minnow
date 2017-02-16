@@ -132,8 +132,10 @@ class Display {
     palette_ = value;
   }
 
-  void SetObjectPalette0(uint8_t value) { object_palette_0_ = value; }
-  void SetObjectPalette1(uint8_t value) { object_palette_1_ = value; }
+  void set_object_palette_0(uint8_t value) { object_palette_0_ = value; }
+  uint8_t object_palette_0() { return object_palette_0_; }
+  void set_object_palette_1(uint8_t value) { object_palette_1_ = value; }
+  uint8_t object_palette_1() { return object_palette_1_; }
 
   bool IsRunning() { return window_->IsRunning(); }
 

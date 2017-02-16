@@ -12,6 +12,7 @@
 #include "input.h"
 #include "common/logging.h"
 #include "mmapfile.h"
+#include "sound_controller.h"
 #include "timers.h"
 
 
@@ -36,9 +37,10 @@ namespace dgb {
 class Memory {
  public:
   Memory(std::shared_ptr<Cartridge> cartridge, std::shared_ptr<Display> display,
-      std::shared_ptr<Input> input, std::shared_ptr<Timers> timers)
-    : cartridge_(cartridge), display_(display), input_(input), timers_(timers) {
-  }
+      std::shared_ptr<Input> input, std::shared_ptr<Timers> timers,
+      std::shared_ptr<SoundController> sound_controller)
+    : cartridge_(cartridge), display_(display), input_(input), timers_(timers),
+      sound_controller_(sound_controller) {}
 
   void LoadBootloader(const std::string &filename);
 
@@ -83,6 +85,7 @@ class Memory {
   std::shared_ptr<Display> display_;
   std::shared_ptr<Input> input_;
   std::shared_ptr<Timers> timers_;
+  std::shared_ptr<SoundController> sound_controller_;
 };
 
 }  // namespace dgb

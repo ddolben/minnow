@@ -1070,6 +1070,14 @@ inline void CPU::ShiftRight(uint8_t *value) {
   if (*value == 0) *f_ |= ZERO_FLAG;
 }
 
+inline uint8_t CPU::ShiftRightIntoCarry(uint8_t value) {
+  // Bit 7 doesn't change, bit 0 goes to carry.
+  *f_ = CARRY_FLAG & (value << 4);
+  uint8_t new_value = (value & 0x80) | (value >> 1);
+  if (value == 0) *f_ |= ZERO_FLAG;
+  return new_value;
+}
+
 inline uint8_t CPU::Swap(uint8_t value) {
   uint8_t new_value = (value >> 4) | (value << 4);
   *f_ = (new_value == 0) ? ZERO_FLAG : 0;
@@ -1139,6 +1147,15 @@ bool CPU::RunPrefix(uint8_t code, Memory *memory) {
   case 0x25: *l_ = ShiftLeft(*l_); break;
   case 0x26: Write8(hl_, ShiftLeft(Read8(hl_, memory)), memory); break;
   case 0x27: *a_ = ShiftLeft(*a_); break;
+
+  case 0x28: *b_ = ShiftRightIntoCarry(*b_); break;
+  case 0x29: *c_ = ShiftRightIntoCarry(*c_); break;
+  case 0x2a: *d_ = ShiftRightIntoCarry(*d_); break;
+  case 0x2b: *e_ = ShiftRightIntoCarry(*e_); break;
+  case 0x2c: *h_ = ShiftRightIntoCarry(*h_); break;
+  case 0x2d: *l_ = ShiftRightIntoCarry(*l_); break;
+  case 0x2e: Write8(hl_, ShiftRightIntoCarry(Read8(hl_, memory)), memory); break;
+  case 0x2f: *a_ = ShiftRightIntoCarry(*a_); break;
 
   case 0x30: *b_ = Swap(*b_); break;
   case 0x31: *c_ = Swap(*c_); break;

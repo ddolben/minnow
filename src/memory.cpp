@@ -113,12 +113,18 @@ uint8_t Memory::ReadFromDevice(uint16_t offset) {
   if (offset == 0xff04) { return timers_->Divider(); }
   if (offset == 0xff0f) { return interrupt_flag_; }
 
+  // Sound controller registers.
+  if (offset == 0xff11) { return sound_controller_->Read8(offset); }
+  if (offset == 0xff25) { return sound_controller_->output_select(); }
+
   if (offset == 0xff40) { return display_->Control(); }
   if (offset == 0xff41) { return display_->Status(); }
   if (offset == 0xff42) { return display_->ScrollY(); }
   if (offset == 0xff43) { return display_->ScrollX(); }
   if (offset == 0xff44) { return display_->LCDCY(); }
   if (offset == 0xff45) { return display_->LYC(); }
+  if (offset == 0xff48) { return display_->object_palette_0(); }
+  if (offset == 0xff49) { return display_->object_palette_1(); }
   if (offset == 0xff4a) { return display_->WindowY(); }
   if (offset == 0xff4b) { return display_->WindowX(); }
 
@@ -174,9 +180,9 @@ void Memory::WriteToDevice(uint16_t offset, uint8_t value) {
     } else if (offset == 0xff47) {
       display_->SetPalette(value);
     } else if (offset == 0xff48) {
-      display_->SetObjectPalette0(value);
+      display_->set_object_palette_0(value);
     } else if (offset == 0xff49) {
-      display_->SetObjectPalette1(value);
+      display_->set_object_palette_1(value);
     } else if (offset == 0xff4a) {
       display_->SetWindowY(value);
     } else if (offset == 0xff4b) {
