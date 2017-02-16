@@ -180,6 +180,12 @@ class MBC3 : public MemoryBankController {
       ram_bank_ = (value & 0x3);
       return;
     }
+    if (0x6000 <= offset && offset < 0x8000) {
+      // TODO: This is a latch clock data register. I have no idea what this
+      // actually does.
+      ERRORF("TODO: MBC3 latch clock data");
+      return;
+    }
     if (0xA000 <= offset && offset < 0xC000) {
       uint32_t bank_offset = (0x2000 * ram_bank_) + (offset - 0xA000);
       ram_[bank_offset] = value;

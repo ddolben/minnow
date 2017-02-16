@@ -115,8 +115,11 @@ uint8_t Memory::ReadFromDevice(uint16_t offset) {
 
   // Sound controller registers.
   if (offset == 0xff11) { return sound_controller_->Read8(offset); }
+  if (offset == 0xff16) { return sound_controller_->Read8(offset); }
+  if (offset == 0xff24) { return sound_controller_->channel_control(); }
   if (offset == 0xff25) { return sound_controller_->output_select(); }
 
+  // Display registers.
   if (offset == 0xff40) { return display_->Control(); }
   if (offset == 0xff41) { return display_->Status(); }
   if (offset == 0xff42) { return display_->ScrollY(); }
