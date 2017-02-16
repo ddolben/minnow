@@ -29,8 +29,8 @@ class Clock {
 
  private:
   // CPU clock speed: 4.194304 MHz (0.2384 us per cycle)
-  const std::chrono::nanoseconds kCPUCycleTime{238};  // Actually 238.4
-  const uint64_t kSyncCycles = 4194;  // Roughly 1ms worth of cycles
+  const int64_t kCPUCycleTime = 238400;  // Measured in picoseconds
+  const uint64_t kSyncCycles = 456;
 
   // Throttle forces the emulator to sleep for a short amount of time so that
   // it executes at the emulated CPU's native clock speed. Call this once per
@@ -45,13 +45,12 @@ class Clock {
       auto now = std::chrono::high_resolution_clock::now();
       auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
           now - last_sync_time_);
-      std::chrono::nanoseconds expected_elapsed =
-          kCPUCycleTime * cycle_accumulator_;
+      std::chrono::nanoseconds expected_elapsed(
+          (kCPUCycleTime * cycle_accumulator_) / 1000);
       if (elapsed < expected_elapsed) {
         std::this_thread::sleep_for(expected_elapsed - elapsed);
-        //std::this_thread::sleep_for(kCPUCycleTime);
       }
-      last_sync_time_ = std::chrono::high_resolution_clock::now();
+      last_sync_time_ = now;
       cycle_accumulator_ = 0;
     }
   }
