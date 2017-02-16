@@ -8,6 +8,8 @@
 
 #include <iostream>
 
+#include "common/time/time.h"
+
 
 namespace dgb {
 
@@ -30,7 +32,8 @@ class Clock {
  private:
   // CPU clock speed: 4.194304 MHz (0.2384 us per cycle)
   const int64_t kCPUCycleTime = 238400;  // Measured in picoseconds
-  const uint64_t kSyncCycles = 456;
+  // Don't do the spin wait for every CPU instruction.
+  const uint64_t kSyncCycles = 4560;
 
   // Throttle forces the emulator to sleep for a short amount of time so that
   // it executes at the emulated CPU's native clock speed. Call this once per
@@ -48,9 +51,11 @@ class Clock {
       std::chrono::nanoseconds expected_elapsed(
           (kCPUCycleTime * cycle_accumulator_) / 1000);
       if (elapsed < expected_elapsed) {
-        std::this_thread::sleep_for(expected_elapsed - elapsed);
+        auto delay = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            expected_elapsed - elapsed);
+        SpinWait(delay.count());
       }
-      last_sync_time_ = now;
+      last_sync_time_ = std::chrono::high_resolution_clock::now();
       cycle_accumulator_ = 0;
     }
   }
