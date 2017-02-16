@@ -111,6 +111,7 @@ void Memory::Write(uint16_t offset, uint8_t *value, int length) {
 uint8_t Memory::ReadFromDevice(uint16_t offset) {
   if (offset == 0xff00) { return input_->Joypad(); }
   if (offset == 0xff04) { return timers_->Divider(); }
+  if (offset == 0xff07) { return timers_->control(); }
   if (offset == 0xff0f) { return interrupt_flag_; }
 
   // Sound controller registers.

@@ -39,6 +39,8 @@ class Timers {
   }
 
   void set_modulo(uint8_t value) { modulo_ = value; }
+
+  uint8_t control() { return control_; }
   void set_control(uint8_t value) {
     control_ = value;
     switch (control_ & 0x3) {
