@@ -879,7 +879,6 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0xcb:
     {
       // Consume the code and advance the program counter.
-      // TODO: cycle count
       uint8_t code = Read8(pc_, memory);
       pc_++;
       *cycle_count = cb_ops[code].short_cycle_count;
@@ -910,7 +909,13 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
       if (do_jump) *cycle_count = ops[code].long_cycle_count;
       break;
     }
-  // TODO: long cycle count 0xd4
+  case 0xd4:
+    {
+      bool do_call = (*f_ & CARRY_FLAG) == 0 ;
+      CallA16(do_call, memory);
+      if (do_call) *cycle_count = ops[code].long_cycle_count;
+      break;
+    }
   case 0xd5:
     Push(de_, memory);
     break;
@@ -928,8 +933,20 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     Return(memory);
     ime_ = true;  // Re-enable interrupts.
     break;
-  // TODO: long cycle count 0xda
-  // TODO: long cycle count 0xdc
+  case 0xda:
+    {
+      bool do_jump = (*f_ & CARRY_FLAG) != 0;
+      Jump(do_jump, memory);
+      if (do_jump) *cycle_count = ops[code].long_cycle_count;
+      break;
+    }
+  case 0xdc:
+    {
+      bool do_call = (*f_ & CARRY_FLAG) != 0;
+      CallA16(do_call, memory);
+      if (do_call) *cycle_count = ops[code].long_cycle_count;
+      break;
+    }
   case 0xde:
     {
       uint8_t value = Read8(pc_, memory);
