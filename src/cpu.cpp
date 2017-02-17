@@ -386,7 +386,7 @@ inline uint8_t CPU::RotateRight(uint8_t value) {
 inline uint8_t CPU::RotateRightThroughCarry(uint8_t value) {
   uint8_t right_bit = value & 0x01;
   // Shift right, filling leftmost bit with carry flag's value.
-  uint8_t new_value = (value >> 1) | ((*f_ & CARRY_FLAG) >> 3);
+  uint8_t new_value = (value >> 1) | ((*f_ & CARRY_FLAG) << 3);
   // Set the carry flag to the old value's 0th bit, and set the zero flag if
   // the result was zero.
   uint8_t zero_bit = (new_value == 0) ? ZERO_FLAG : 0;
