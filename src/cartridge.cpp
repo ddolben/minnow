@@ -1,9 +1,14 @@
 #include "cartridge.h"
 
+#include <cstring>
 #include <map>
+#include <memory>
 #include <string>
 
+#include "clock.h"
 #include "common/logging.h"
+#include "common/file/fileutils.h"
+#include "common/time/time.h"
 
 namespace dgb {
 
@@ -195,17 +200,45 @@ class MBC3 : public MemoryBankController {
         offset & 0xffff, value & 0xff);
   }
 
+  bool LoadRAM(const std::string &filename) override {
+    if (!file::Exists(filename)) {
+      INFOF("No save file found.");
+      std::memset(ram_, 0, kRAMSize);  // Zero out the RAM block.
+      return true;
+    }
+
+    std::vector<char> contents;
+    bool result = file::ReadBytes(filename, &contents);
+    if (!result) return false;
+    INFOF("Read %lu bytes from file '%s'", contents.size(), filename.c_str());
+    if (contents.size() != kRAMSize) {
+      FATALF("Save file '%s' was not the correct size.", filename.c_str());
+    }
+    std::memcpy(ram_, contents.data(), kRAMSize);
+    return true;
+  }
+
+  bool PersistRAM(const std::string &filename) override {
+    bool result = file::WriteBytes(filename, ram_, kRAMSize);
+    if (!result) return false;
+    INFOF("Wrote %d bytes to file '%s'", kRAMSize, filename.c_str());
+    return true;
+  }
+
  private:
+  const static int kRAMSize = 0x8000;
   int rom_bank_ = 0;
   int ram_bank_ = 0;
 
   // 32kb of RAM.
-  uint8_t ram_[0x8000];
+  uint8_t ram_[kRAMSize];
 };
 }  // namespace
 
-Cartridge::Cartridge(const std::string &filename)
-    : rom_(new MMapFile(filename)) {
+Cartridge::Cartridge(
+    const std::string &filename, const std::string &save_filename,
+    std::shared_ptr<Clock> clock)
+  : save_filename_(save_filename), rom_(new MMapFile(filename)) {
   uint8_t type_byte = rom_->Read8(kCartridgeTypeAddress);
   switch (type_byte) {
     case 0x0:
@@ -220,6 +253,18 @@ Cartridge::Cartridge(const std::string &filename)
     default:
       FATALF("Unsupported cartridge type: 0x%02x", type_byte & 0xff);
   }
+
+  if (!mbc_->LoadRAM(save_filename_)) {
+    FATALF("Failed to load save file '%s'.", save_filename_.c_str());
+  }
+
+  clock->RegisterObserver([this](int cycles) {
+    cycle_accumulator_ += cycles;
+    if (cycle_accumulator_ > kWriteCheckInterval) {
+      MaybeWrite();
+      cycle_accumulator_ = 0;
+    }
+  });
 }
 
 uint8_t Cartridge::Read8(uint16_t offset) {
@@ -232,18 +277,17 @@ uint8_t Cartridge::Read8(uint16_t offset) {
 }
 
 void Cartridge::Write8(uint16_t offset, uint8_t value) {
-  //if (offset < 0x8000) {
-  //  ERRORF("Unimplemented Write to Cartridge RAM: (0x%04x) <- 0x%02x",
-  //      offset & 0xffff, value & 0xff);
-  //  return;
-  //}
-  //if (0xA000 <= offset && offset <= 0xBFFF) {
-  //  ERRORF("Unimplemented Write to Cartridge RAM: (0x%04x) <- 0x%02x",
-  //      offset & 0xffff, value & 0xff);
-  //  return;
-  //}
   mbc_->Write8(offset, value);
+  // Ensure it's a ram write.
+  // TODO: make sure this works for all MBC types.
+  if (0xA000 <= offset && offset <= 0xBFFF) {
+    Dirty();
+  }
   return;
+}
+
+bool Cartridge::Persist() {
+  return mbc_->PersistRAM(save_filename_);
 }
 
 std::string Cartridge::Title() {
@@ -283,6 +327,21 @@ void Cartridge::PrintCartridgeDebug() {
     INFOF("RAM Size (0x%01x): %s",
         ram_size_byte & 0xff, ram_size->second.c_str());
   }
+}
+
+void Cartridge::Dirty() {
+  dirty_ = true;
+  last_dirty_timestamp_ = CurrentNanos();
+}
+
+void Cartridge::MaybeWrite() {
+  if (!dirty_ || CurrentNanos() < last_dirty_timestamp_ + kWriteDelay) return;
+  bool result = Persist();
+  if (!result) {
+    ERRORF("Failed to write to file '%s'.", save_filename_.c_str());
+    return;
+  }
+  dirty_ = false;
 }
 
 }  // namespace dgb

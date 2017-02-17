@@ -32,6 +32,8 @@ using dgb::SoundController;
 using dgb::Timers;
 using dgb::WindowController;
 
+const char *kSaveExtension = ".sav";
+
 struct {
   std::string filename;
 } args;
@@ -44,7 +46,9 @@ void PrintHelpAndExit(char *arg0) {
 Flag<std::string> FLAG_bootloader("bootloader", "");
 Flag<std::string> FLAG_breakpoint("breakpoint", "");
 Flag<std::string> FLAG_breakpoint_opcode("breakpoint_opcode", "");
+// Print the display framerate to the console.
 Flag<bool> FLAG_print_fps("print_fps", false);
+// Show debug windows, such as the tileset and the background map.
 Flag<bool> FLAG_debug_windows("debug_windows", false);
 // Throttle the CPU to run at native speed. Set to false to run as fast as
 // possible.
@@ -58,10 +62,17 @@ void ProcessArgs(int *argc, char **argv[]) {
   args.filename = std::string((*argv)[1]);
 }
 
+std::string GetSaveFilename(const std::string &filename) {
+  size_t i = filename.find_last_of(".");
+  if (i == std::string::npos) return filename + kSaveExtension;
+  return filename.substr(0, i) + kSaveExtension;
+}
+
 int main(int argc, char *argv[]) {
   ProcessArgs(&argc, &argv);
+  std::string save_filename = GetSaveFilename(args.filename);
+  INFOF("Save file: %s", save_filename.c_str());
 
-  //std::shared_ptr<EventDispatch> dispatch(new EventDispatch());
   std::shared_ptr<EventDispatch> dispatch = dgb::GlobalDispatch();
   std::shared_ptr<Clock> clock(new Clock(*FLAG_throttle_cpu));
   std::shared_ptr<Interrupts> interrupts(new Interrupts());
@@ -73,7 +84,8 @@ int main(int argc, char *argv[]) {
   std::shared_ptr<Display> display(
       new Display(Display::kDisplayWidth*2, Display::kDisplayHeight*2,
                   *FLAG_debug_windows, clock, interrupts, window_controller));
-  std::shared_ptr<Cartridge> cartridge(new Cartridge(args.filename));
+  std::shared_ptr<Cartridge> cartridge(
+      new Cartridge(args.filename, save_filename, clock));
   std::shared_ptr<SoundController> sound_controller(new SoundController());
   Memory memory(cartridge, display, input, timers, sound_controller);
   CPU cpu(clock, interrupts);
@@ -111,6 +123,9 @@ int main(int argc, char *argv[]) {
   display->Loop();
   cpu.Kill();
   cpu.Wait();
+
+  // Flush the RAM to the save file before exiting.
+  cartridge->Persist();
 
 	return 0;
 }

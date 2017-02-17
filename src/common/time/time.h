@@ -15,6 +15,14 @@ inline void Pause() {
 
 }  // namespace
 
+// Nanos returns the current Unix Epoch timestamp in nanoseconds. The actual
+// resolution of the timestamp depents on the system's implementatino of
+// std::chrono::high_resolution_clock.
+inline uint64_t CurrentNanos() {
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(
+      std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+}
+
 // SpinWait performs a very accurate wait by spinning the CPU until the desired
 // time has elapsed.
 // Note that this may cause a large load on the CPU.

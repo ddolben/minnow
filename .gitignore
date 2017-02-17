@@ -1,6 +1,8 @@
 *.DS_Store
 minnow
 *.gb
+*.sav
+*.bak
 obj/
 *.swp
 *.bin
