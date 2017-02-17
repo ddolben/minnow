@@ -68,6 +68,8 @@ class CPU {
   };
 
   // Op helpers.
+  // TODO: make these all self-contained (not dependent on instance variables)
+  // so they're easier to test.
   uint8_t LoadData8(uint8_t *dest, Memory *memory);
   uint16_t LoadData16(uint16_t *dest, Memory *memory);
   uint8_t LoadData8ToMem(uint16_t dest_addr, Memory *memory);
@@ -77,9 +79,17 @@ class CPU {
   void Dec8(uint8_t *value);
   void Dec16(uint16_t *value);
   void Add8(uint8_t *dest, uint8_t value);  // ADD
+  // Performs an 8-bit ADD, but allows the arguments to be 16-bit numbers to
+  // properly account for operands greater than 0xFF, for example to implement
+  // ADC.
+  uint8_t Add8With16(uint16_t a, uint16_t b);
   void AddCarry8(uint8_t *dest, uint8_t value);  // ADC
   void Add16(uint16_t *dest, uint16_t value);
   void Sub8(uint8_t *dest, uint8_t value);  // SUB
+  // Performs an 8-bit SUB, but allows the arguments to be 16-bit numbers to
+  // properly account for operands greater than 0xFF, for example to implement
+  // ADC.
+  uint8_t Sub8With16(uint16_t a, uint16_t b);
   void SubCarry8(uint8_t *dest, uint8_t value);  // SBC
   void DecimalAdjust(uint8_t *dest);  // DAA
   void Cp(uint8_t value);

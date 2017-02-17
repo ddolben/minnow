@@ -188,10 +188,19 @@ inline void CPU::Add8(uint8_t *dest, uint8_t value) {
   if (*dest == 0) *f_ |= ZERO_FLAG;
 }
 
+// TODO: merge with Add8
+inline uint8_t CPU::Add8With16(uint16_t a, uint16_t b) {
+  *f_ = 0x0;  // Reset subtraction flag.
+  if ((b & 0xf) > (0xf - (a & 0xf))) *f_ |= HALF_CARRY_FLAG;
+  if (b > (0xff - a)) *f_ |= CARRY_FLAG;
+  if (b == (1 + (0xff - a))) *f_ |= ZERO_FLAG;
+
+  return a + b;
+}
+
 inline void CPU::AddCarry8(uint8_t *dest, uint8_t value) {
   uint8_t carry = (*f_ & CARRY_FLAG) >> 4;
-  if (value == 0xff && carry > 0) ERRORF("TODO: fix the ADC value overflow");
-  Add8(dest, value + carry);
+  *dest = Add8With16(*dest, value + carry);
 }
 
 inline void CPU::Add16(uint16_t *dest, uint16_t value) {
@@ -211,10 +220,19 @@ inline void CPU::Sub8(uint8_t *dest, uint8_t value) {
   *dest -= value;
 }
 
+// TODO: merge with Sub8
+inline uint8_t CPU::Sub8With16(uint16_t a, uint16_t b) {
+  *f_ = SUBTRACT_FLAG;  // Set subtraction flag.
+  if (a == b) *f_ |= ZERO_FLAG;
+  if ((a & 0xf) < (b & 0xf)) *f_ |= HALF_CARRY_FLAG;
+  if (a < b) *f_ |= CARRY_FLAG;
+
+  return a - b;
+}
+
 inline void CPU::SubCarry8(uint8_t *dest, uint8_t value) {
   uint8_t carry = (*f_ & CARRY_FLAG) >> 4;
-  if (value == 0xff && carry > 0) ERRORF("TODO: fix the SBC value overflow");
-  Sub8(dest, value + carry);
+  *dest = Sub8With16(*dest, value + carry);
 }
 
 inline void CPU::DecimalAdjust(uint8_t *dest) {
