@@ -114,3 +114,7 @@ You can see that CPU::IsRunning() is now taking up 27.2% of the host CPU's time,
 The morla of the story is this: if you have access to one, you should _absolutely_ use a profiler at some point in the development cycle if you care about fast code. They're pretty easy to use, and can point out obvious performance improvements that can sometimes be as simple as adding one character.
 
 I could probably go digging through the timing profile for the next few days, eking out little performance improvements here and there, but for now, I'm pretty stoked with a 55 to 130 fps improvement. There's still lots of other stuff to do.
+
+### Inconsistency of Thread Sleep Functions
+
+TODO
