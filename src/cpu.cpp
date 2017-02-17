@@ -1111,11 +1111,12 @@ inline uint8_t CPU::ShiftLeft(uint8_t value) {
   return new_value;
 }
 
-inline void CPU::ShiftRight(uint8_t *value) {
+inline uint8_t CPU::ShiftRight(uint8_t value) {
   // Shift bit 0 of *value into the carry flag position.
-  *f_ = CARRY_FLAG & (*value << 4);
-  *value = (*value >> 1);
-  if (*value == 0) *f_ |= ZERO_FLAG;
+  *f_ = CARRY_FLAG & (value << 4);
+  uint8_t new_value = (value >> 1);
+  if (new_value == 0) *f_ |= ZERO_FLAG;
+  return new_value;
 }
 
 inline uint8_t CPU::ShiftRightIntoCarry(uint8_t value) {
@@ -1214,7 +1215,14 @@ bool CPU::RunPrefix(uint8_t code, Memory *memory) {
   case 0x36: Write8(hl_, Swap(Read8(hl_, memory)), memory); break;
   case 0x37: *a_ = Swap(*a_); break;
 
-  case 0x3f: ShiftRight(a_); break;
+  case 0x38: *b_ = ShiftRight(*b_); break;
+  case 0x39: *c_ = ShiftRight(*c_); break;
+  case 0x3a: *d_ = ShiftRight(*d_); break;
+  case 0x3b: *e_ = ShiftRight(*e_); break;
+  case 0x3c: *h_ = ShiftRight(*h_); break;
+  case 0x3d: *l_ = ShiftRight(*l_); break;
+  case 0x3e: Write8(hl_, ShiftRight(Read8(hl_, memory)), memory); break;
+  case 0x3f: *a_ = ShiftRight(*a_); break;
 
   case 0x40: TestBit(*b_, 0); break;
   case 0x41: TestBit(*c_, 0); break;
