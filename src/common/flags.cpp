@@ -9,23 +9,6 @@
 
 namespace {
 
-std::map<std::string, Flag<std::string>*> string_flags;
-std::map<std::string, Flag<bool>*> bool_flags;
-
-}  // namespace
-
-template <>
-void RegisterFlag(Flag<std::string> *flag, std::string name) {
-  string_flags[name] = flag;
-}
-
-template <>
-void RegisterFlag(Flag<bool> *flag, std::string name) {
-  bool_flags[name] = flag;
-}
-
-namespace {
-
 const static std::string kTrueString{"true"};
 
 bool ParseBoolFromFlag(const std::vector<std::string> splits) {
@@ -60,9 +43,9 @@ void ParseFlags(int *argc, char **argv[]) {
     const std::string &name = splits[0];
 
     // Do bool flags first so we don't fail if there's no '=' character.
-    if (bool_flags.find(name) != bool_flags.end()) {
+    if (FlagRegistrar<bool>::HasFlag(name)) {
       bool value = ParseBoolFromFlag(splits);
-      bool_flags[name]->set_value(value);
+      FlagRegistrar<bool>::SetValue(name, value);
       INFOF("  %s = %s", name.c_str(), (value) ? "true" : "false");
       continue;
     }
@@ -72,8 +55,8 @@ void ParseFlags(int *argc, char **argv[]) {
     }
     const std::string &value = splits[1];
 
-    if (string_flags.find(name) != string_flags.end()) {
-      string_flags[name]->set_value(value);
+    if (FlagRegistrar<std::string>::HasFlag(name)) {
+      FlagRegistrar<std::string>::SetValue(name, value);
       INFOF("  %s = %s", name.c_str(), value.c_str());
       continue;
     }
