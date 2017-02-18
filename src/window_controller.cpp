@@ -15,6 +15,18 @@ bool WindowController::Tick() {
         if (event_.key.keysym.scancode == SDL_SCANCODE_SPACE) {
           dispatch_->FireEvent(Event(EVENT_TOGGLE_PAUSE));
         }
+        if (event_.key.keysym.scancode == SDL_SCANCODE_A) {
+          Event e = Event(EVENT_THROTTLE);
+          e.set_bool_value(true);
+          dispatch_->FireEvent(e);
+        }
+        break;
+      case SDL_KEYDOWN:
+        if (event_.key.keysym.scancode == SDL_SCANCODE_A) {
+          Event e = Event(EVENT_THROTTLE);
+          e.set_bool_value(false);
+          dispatch_->FireEvent(e);
+        }
         break;
       case SDL_QUIT:
         running_ = false;

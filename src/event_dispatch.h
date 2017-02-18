@@ -11,7 +11,8 @@ namespace dgb {
 enum EventCode {
   EVENT_UNKNOWN = 0,
   EVENT_START_DEBUGGER,
-  EVENT_TOGGLE_PAUSE
+  EVENT_TOGGLE_PAUSE,
+  EVENT_THROTTLE
 };
 
 class Event {
@@ -19,8 +20,13 @@ class Event {
   Event(EventCode code) : code_(code) {}
   EventCode code() const { return code_; }
 
+  bool bool_value() const { return bool_value_; }
+  void set_bool_value(bool value) { bool_value_ = value; }
+
  private:
   EventCode code_ = EVENT_UNKNOWN;
+
+  bool bool_value_ = false;
 };
 
 typedef std::function<void(const Event &event)> Observer;

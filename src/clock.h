@@ -29,6 +29,8 @@ class Clock {
     callbacks_.push_back(f);
   }
 
+  void set_throttle(bool value) { throttle_ = value; }
+
  private:
   // CPU clock speed: 4.194304 MHz (0.2384 us per cycle)
   const int64_t kCPUCycleTime = 238400;  // Measured in picoseconds

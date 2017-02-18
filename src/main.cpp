@@ -95,6 +95,14 @@ int main(int argc, char *argv[]) {
   });
   dispatch->RegisterObserver(dgb::EVENT_TOGGLE_PAUSE, [&cpu](const Event &event) {
     cpu.set_paused(!cpu.paused());
+    if (cpu.paused()) {
+      INFOF("Pause.");
+    } else {
+      INFOF("Unpause.");
+    }
+  });
+  dispatch->RegisterObserver(dgb::EVENT_THROTTLE, [&clock](const Event &event) {
+    clock->set_throttle(event.bool_value());
   });
 
   if ((*FLAG_bootloader).empty()) {
