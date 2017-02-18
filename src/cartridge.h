@@ -11,6 +11,47 @@
 
 namespace dgb {
 
+// MBC3RTC wraps all the functionality of MBC3's Real-Time Clock into a single
+// class.
+class MBC3RTC {
+ public:
+  struct RTCData {
+    uint8_t seconds = 0;
+    uint8_t minutes = 0;
+    uint8_t hours = 0;
+    // This value contains the day counter, represented in the 9 least
+    // significant bits, plus the counter halt value and the day overflow bit.
+    uint16_t days = 0;
+  };
+
+  static const uint16_t RTC_DAY_OVERFLOW_BIT = 0x8000;
+  static const uint16_t RTC_HALT_BIT = 0x4000;
+
+  void UpdateRTC();
+
+  // Converts an RTC data element to a Unix time delta (just the number of
+  // seconds the RTCData object accounts for).
+  static uint64_t RTCDataToTimestamp(const RTCData &rtc);
+
+  // Converts a Unix time delta (just a number of seconds) to an RTCData struct.
+  // The day counter will be truncated to 9 bits, and if it is larger than 512
+  // (before truncation), the day carry bit will be set.
+  static RTCData TimestampToRTCData(uint64_t seconds);
+
+  // Computes a new RTCData object by adding the given time delta (in seconds)
+  // to base_rtc.
+  static RTCData ComputeNewRTCData(
+      const RTCData &base_rtc, uint64_t timestamp_delta);
+
+ private:
+  // The timestamp (in seconds since Unix Epoch) from which relative RTC time
+  // is measured.
+  uint64_t base_timestamp_ = 0;
+
+  // The RTCData at the time of base_timestamp_.
+  RTCData base_rtc_;
+};
+
 // Emulates the cartridge MBC.
 class MemoryBankController {
  public:

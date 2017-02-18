@@ -15,11 +15,19 @@ inline void Pause() {
 
 }  // namespace
 
-// Nanos returns the current Unix Epoch timestamp in nanoseconds. The actual
-// resolution of the timestamp depents on the system's implementatino of
+// CurrentNanos returns the current Unix Epoch timestamp in nanoseconds. The
+// actual resolution of the timestamp depents on the system's implementation of
 // std::chrono::high_resolution_clock.
 inline uint64_t CurrentNanos() {
   return std::chrono::duration_cast<std::chrono::nanoseconds>(
+      std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+}
+
+// CurrentSeconds returns the current Unix Epoch timestamp in seconds. The
+// actual resolution of the timestamp depents on the system's implementation of
+// std::chrono::high_resolution_clock.
+inline uint64_t CurrentSeconds() {
+  return std::chrono::duration_cast<std::chrono::seconds>(
       std::chrono::high_resolution_clock::now().time_since_epoch()).count();
 }
 

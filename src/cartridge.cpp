@@ -218,6 +218,7 @@ class MBC3 : public MemoryBankController {
     return true;
   }
 
+  // TODO: mmap?
   bool PersistRAM(const std::string &filename) override {
     bool result = file::WriteBytes(filename, ram_, kRAMSize);
     if (!result) return false;
@@ -227,13 +228,64 @@ class MBC3 : public MemoryBankController {
 
  private:
   const static int kRAMSize = 0x8000;
+
   int rom_bank_ = 0;
   int ram_bank_ = 0;
 
   // 32kb of RAM.
   uint8_t ram_[kRAMSize];
+
+  // Real-Time clock.
+  MBC3RTC rtc_;
 };
+
 }  // namespace
+
+void MBC3RTC::UpdateRTC() {
+  // TODO: check if latched or halted
+  uint64_t current_timestamp = CurrentSeconds();
+
+  // Compue the seconds elapsed since base_timestamp_;
+  uint64_t timestamp_delta = current_timestamp = base_timestamp_;
+
+  base_rtc_ = ComputeNewRTCData(base_rtc_, timestamp_delta);
+  base_timestamp_ = current_timestamp;
+}
+
+uint64_t MBC3RTC::RTCDataToTimestamp(const RTCData &rtc) {
+  uint64_t timestamp = 0;
+  timestamp += rtc.seconds;
+  timestamp += rtc.minutes * 60;
+  timestamp += rtc.hours * 3600;
+  timestamp += rtc.days * 86400;
+  return timestamp;
+}
+
+MBC3RTC::RTCData MBC3RTC::TimestampToRTCData(uint64_t seconds) {
+  MBC3RTC::RTCData rtc;
+  rtc.seconds = seconds % 60;
+  rtc.minutes = (seconds / 60) % 60;
+  rtc.hours = (seconds / 3600) % 24;
+  unsigned days = seconds / 86400;
+  rtc.days = days & 0x1FF;
+  if (days > 0x1FF) rtc.days |= RTC_DAY_OVERFLOW_BIT;
+  return rtc;
+}
+
+MBC3RTC::RTCData MBC3RTC::ComputeNewRTCData(const RTCData &base_rtc,
+    uint64_t timestamp_delta) {
+
+  // Convert the base RTC data into a Unix time delta.
+  uint64_t base_seconds = RTCDataToTimestamp(base_rtc);
+
+  // Add the actual elapsed time.
+  uint64_t new_seconds = base_seconds + timestamp_delta;
+
+  // Convert that Unix delta back into an RTCData struct (should account for
+  // all overflow).
+  return TimestampToRTCData(new_seconds);
+}
+
 
 Cartridge::Cartridge(
     const std::string &filename, const std::string &save_filename,
