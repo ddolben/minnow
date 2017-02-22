@@ -119,6 +119,7 @@ uint8_t Memory::ReadFromDevice(uint16_t offset) {
   if (offset == 0xff16) { return sound_controller_->Read8(offset); }
   if (offset == 0xff24) { return sound_controller_->channel_control(); }
   if (offset == 0xff25) { return sound_controller_->output_select(); }
+  if (offset == 0xff26) { return sound_controller_->on_off(); }
 
   // Display registers.
   if (offset == 0xff40) { return display_->Control(); }
@@ -143,13 +144,13 @@ void Memory::WriteToDevice(uint16_t offset, uint8_t value) {
     return;
   }
   if (offset == 0xff01) {  // Serial Transfer Data register.
-    WARNINGF("NOT IMPLEMENTED: write to Serial Transfer Data register "
-        "(0xff01) <- 0x%02x", value);
+    //WARNINGF("NOT IMPLEMENTED: write to Serial Transfer Data register "
+    //    "(0xff01) <- 0x%02x", value);
     return;
   }
   if (offset == 0xff02) {  // Serial Transfer Control register.
-    WARNINGF("NOT IMPLEMENTED: write to Serial Transfer Control register "
-        "(0xff02) <- 0x%02x", value);
+    //WARNINGF("NOT IMPLEMENTED: write to Serial Transfer Control register "
+    //    "(0xff02) <- 0x%02x", value);
     return;
   }
   if (offset == 0xff06) {  // Timer Modulo register.
@@ -164,10 +165,21 @@ void Memory::WriteToDevice(uint16_t offset, uint8_t value) {
     interrupt_flag_ = value;
     return;
   }
-  if ((0xff10 <= offset && offset <= 0xff26) ||
+  if (offset == 0xff24) {
+    sound_controller_->set_channel_control(value);
+    return;
+  }
+  if (offset == 0xff25) {
+    sound_controller_->set_output_select(value);
+    return;
+  }
+  if (offset == 0xff26) {
+    sound_controller_->set_on_off(value);
+    return;
+  }
+  if ((0xff10 <= offset && offset <= 0xff23) ||
       (0xff30 <= offset && offset <= 0xff3f)) {  // Sound control registers.
-    //WARNINGF("NOT IMPLEMENTED: write to sound device (0x%04x) <- 0x%04x",
-    //    offset & 0xffff, value & 0xff);
+    sound_controller_->Write8(offset, value);
     return;
   }
   if (0xff40 <= offset && offset <= 0xff4b) {  // Display IO registers.
