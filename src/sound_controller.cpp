@@ -31,7 +31,7 @@ void SoundController::UpdateChannel1() {
     channel1_frequency_low_ + ((channel1_frequency_high_ & 0x7) * 0x100);
   int frequency = 131072 / (2048 - frequency_x);
   if (frequency > 3000) {
-    printf("%d\n", frequency);
+    //printf("%d\n", frequency);
     frequency = 0;
   }
 
@@ -70,7 +70,7 @@ void SoundController::UpdateChannel2() {
     channel2_frequency_low_ + ((channel2_frequency_high_ & 0x7) * 0x100);
   int frequency = 131072 / (2048 - frequency_x);
   if (frequency > 3000) {
-    printf("%d\n", frequency);
+    //printf("%d\n", frequency);
     frequency = 0;
   }
 
@@ -98,7 +98,7 @@ void SoundController::UpdateChannel2() {
 
 void SoundController::Write8(uint16_t address, uint8_t value) {
   if (address == 0xff10) {
-    printf("Sweep\n");
+    //printf("Sweep\n");
     channel1_sweep_ = value;
     float interval;
 		switch ((value & 0x70) >> 4) {
@@ -133,10 +133,10 @@ void SoundController::Write8(uint16_t address, uint8_t value) {
   if (address == 0xff14) {
     channel1_frequency_high_ = value;
     if ((channel1_frequency_high_ & 0x80) != 0) {
-      printf("Restart sound 1\n");
+      //printf("Restart sound 1\n");
       UpdateChannel1();
     } else {
-      printf("Don't restart sound 1\n");
+      //printf("Don't restart sound 1\n");
     }
     return;
   }
@@ -158,10 +158,10 @@ void SoundController::Write8(uint16_t address, uint8_t value) {
   if (address == 0xff19) {
     channel2_frequency_high_ = value;
     if ((channel2_frequency_high_ & 0x80) != 0) {
-      printf("Restart sound 2\n");
+      //printf("Restart sound 2\n");
       UpdateChannel2();
     } else {
-      printf("Don't restart sound 2\n");
+      //printf("Don't restart sound 2\n");
     }
     return;
   }

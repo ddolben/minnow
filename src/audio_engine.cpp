@@ -14,6 +14,13 @@ void AudioTrack::SetLength(float length) {
   track_length_counter_ = length * kLengthCheckRate;
 }
 
+// Samples a square wave.
+// t:  between 0.0 and 1.0 and represents the time within a single cycle.
+// duty:  between 0.0 and 1.0
+static int16_t SampleSquare(float t, float duty) {
+  return (t >= duty) ? 1 : -1;
+}
+
 void AudioTrack::SetSquare(int frequency, float duty) {
   // TODO: bounds check
   frequency_ = frequency;
@@ -24,6 +31,8 @@ void AudioTrack::SetSquare(int frequency, float duty) {
     square_duty_ = (sample_rate_ / frequency_) * duty;
   }
   square_duty_fraction_ = duty;
+
+  UpdateBufferSquare();
 }
 
 void AudioTrack::SetFrequencySweep(int sweep_step, float sweep_interval) {
@@ -50,17 +59,35 @@ int16_t AudioTrack::Sample(float t) {
   if (track_length_counter_ <= 0 || frequency_ <= 0 || volume_ <= 0) {
     return 0;
   }
-  return SampleSquare(t);
+  //return SampleSquare(t);
+  // TODO: synchronize access to the buffer
+  return SampleBuffer(t);
 }
 
 int16_t AudioTrack::SampleSine(float t) {
   return volume_ * std::sin(2.0 * M_PI * t * frequency_);
 }
 
+void AudioTrack::UpdateBufferSquare() {
+  if (frequency_ <= 0) return;  // TODO: what to do here?
+  unsigned cycles_in_sample = sample_rate_ / frequency_;
+  sample_buffer_.Resize(cycles_in_sample);
+  for (unsigned i = 0; i < cycles_in_sample; ++i) {
+    sample_buffer_[i] = dgb::SampleSquare(
+        static_cast<float>(i) / cycles_in_sample,
+        square_duty_fraction_);
+  }
+}
+
 int16_t AudioTrack::SampleSquare(float t) {
   return volume_ * ((
       static_cast<int>(t * sample_rate_) % (sample_rate_ / frequency_)
           > square_duty_) ? 1 : -1);
+}
+
+int16_t AudioTrack::SampleBuffer(float t) {
+  unsigned i = static_cast<int>(t * sample_rate_) % sample_buffer_.Size();
+  return volume_ * sample_buffer_[i];
 }
 
 void AudioTrack::DoVolumeCheck() {
@@ -73,7 +100,7 @@ void AudioTrack::DoVolumeCheck() {
     if (volume_ < kVolumeMin) volume_ = kVolumeMin;
 
     volume_sweep_counter_ = volume_sweep_interval_;
-    printf("volume: %d %d %d %d\n", volume_sweep_direction_, kVolumeMax, kVolumeSweepStep, volume_);
+    //printf("volume: %d %d %d %d\n", volume_sweep_direction_, kVolumeMax, kVolumeSweepStep, volume_);
   }
 }
 
@@ -86,7 +113,9 @@ void AudioTrack::DoFrequencyCheck() {
     if (frequency_ < kFrequencyMin) frequency_ = kFrequencyMin;
 
     frequency_sweep_counter_ = frequency_sweep_interval_;
-    printf("frequency: %d\n", frequency_);
+    //printf("frequency: %d\n", frequency_);
+
+    UpdateBufferSquare();
   }
 }
 

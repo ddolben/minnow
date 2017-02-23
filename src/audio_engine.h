@@ -4,6 +4,36 @@
 #include <SDL2/SDL.h>
 
 
+// DynamicRingBuffer is a ring buffer that can be resized, and dynamically
+// grows the underlying memory accordingly.
+template <typename T>
+class DynamicRingBuffer {
+ public:
+  DynamicRingBuffer(T default_value = T()) : default_value_(default_value) {}
+  DynamicRingBuffer(unsigned long size, T default_value = T())
+      : default_value_(default_value) {
+    Resize(size);
+  }
+
+  void Resize(unsigned long size) {
+    data_.resize(size, default_value_);
+  }
+
+  unsigned long Size() { return data_.size(); }
+
+  const T &operator[](unsigned long i) const {
+    return data_[ i % Size() ];
+  }
+  T &operator[](unsigned long i) {
+    return data_[ i % Size() ];
+  }
+
+ private:
+  T default_value_;
+  std::vector<T> data_;
+};
+
+
 namespace dgb {
 
 static const int kVolumeMax = INT16_MAX;
@@ -55,9 +85,18 @@ class AudioTrack {
  private:
   int16_t SampleSine(float t);
 
+  // Updates the sample buffer with a square wave.
+  void UpdateBufferSquare();
+
   // Samples a square wave at time 't'.
   // TODO: band-limited synthesis
   int16_t SampleSquare(float t);
+
+  // Returns the correct portion of the internal sample buffer for time 't'.
+  int16_t SampleBuffer(float t);
+
+  // Contains one full cycle's worth of samples.
+  DynamicRingBuffer<int16_t> sample_buffer_;
 
   // Number of length checks left until the track is silenced.
   uint64_t track_length_counter_ = UINT64_MAX;
