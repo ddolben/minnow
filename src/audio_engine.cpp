@@ -7,6 +7,8 @@
 
 #include <SDL2/SDL.h>
 
+#include "common/logging.h"
+
 
 namespace dgb {
 
@@ -53,6 +55,16 @@ void AudioTrack::SetVolumeAndSweep(float volume, float sweep_interval) {
   volume_sweep_interval_ = kVolumeCheckRate * std::abs(sweep_interval);
   volume_sweep_counter_ = volume_sweep_interval_;
   do_volume_sweep_ = true;
+}
+
+void AudioTrack::SetWaveform(int16_t *data, int length) {
+  CHECK(length <= sample_buffer_.Size());
+  unsigned length_ratio = sample_buffer_.Size() / length;
+  unsigned data_index;
+  for (unsigned i = 0; i < sample_buffer_.Size(); ++i) {
+    data_index = i / length_ratio;
+    sample_buffer_[i] = data[data_index];
+  }
 }
 
 int16_t AudioTrack::Sample(float t) {

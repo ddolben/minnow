@@ -76,6 +76,11 @@ class AudioTrack {
   //   A value of zero will turn off volume sweep.
   void SetVolumeAndSweep(float volume, float sweep_interval);
 
+  // Copies an arbitrary waveform into the sample buffer, maintaining the
+  // current sample buffer's size. Performs left-nearest-neighbor interpolation
+  // on the samples.
+  void SetWaveform(int16_t *data, int length);
+
   int16_t Sample(float t);
 
   void DoVolumeCheck();
