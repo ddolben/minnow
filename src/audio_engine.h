@@ -12,6 +12,10 @@ static const int kVolumeSweepStep = kVolumeMax / 16;
 static const int kFrequencyMax = 20000;
 static const int kFrequencyMin = 20;
 
+static const int kFrequencyCheckRate = 128;
+static const int kVolumeCheckRate = 64;
+static const int kLengthCheckRate = 256;
+
 class AudioTrack {
  public:
   AudioTrack(int sample_rate) : sample_rate_(sample_rate) {}
@@ -44,6 +48,10 @@ class AudioTrack {
 
   int16_t Sample(float t);
 
+  void DoVolumeCheck();
+  void DoFrequencyCheck();
+  void DoLengthCheck();
+
  private:
   int16_t SampleSine(float t);
 
@@ -51,21 +59,16 @@ class AudioTrack {
   // TODO: band-limited synthesis
   int16_t SampleSquare(float t);
 
-  void DoVolumeSweep();
-  void DoFrequencySweep();
-
-  // Used for determining when to do a volume sweep step.
-  unsigned sample_count_ = 0;
-  // Track length, measured in samples.
-  uint64_t track_length_ = UINT64_MAX;
+  // Number of length checks left until the track is silenced.
+  uint64_t track_length_counter_ = UINT64_MAX;
   // Samples per second for the current device.
   int sample_rate_ = 0;
 
   // Current frequency of the output tone, in Hz.
   unsigned frequency_ = 0;
-  // Number of samples until next frequency sweep step.
+  // Number of frequency checks until next frequency sweep step.
   unsigned frequency_sweep_counter_ = 0;
-  // Number of samples per frequency sweep step.
+  // Value to copy into frequency_sweep_counter_ when it hits zero.
   unsigned frequency_sweep_interval_ = 0;
   // Amount to change frequency for each step, in Hz.
   // TODO: description
@@ -76,9 +79,9 @@ class AudioTrack {
   float square_duty_fraction_ = 0.0f;
 
   int volume_ = 0;  // 0 - int16 max (0x7FFF for now)
-  // Number of samples until next volume sweep step.
+  // Number of volume checks until next volume sweep step.
   unsigned volume_sweep_counter_ = 0;
-  // Number of samples per volume sweep step.
+  // Value to copy into volume_sweep_counter_ when it hits zero.
   unsigned volume_sweep_interval_ = 0;
   int volume_sweep_direction_ = 1;  // -1 or 1
   bool do_volume_sweep_ = false;
@@ -103,11 +106,27 @@ class AudioEngine {
   int sample_rate() { return sample_rate_; }
 
  private:
+  // Decrement all the check counters and execute any necessary checks.
+  void DoChecks();
+
+  // Check to see if any modifications need to be made to any tracks.
+  void DoVolumeChecks();
+  void DoFrequencyChecks();
+  void DoLengthChecks();
+
   std::vector<std::shared_ptr<AudioTrack>> tracks_;
 
   uint64_t audio_pos_ = 0;
   int sample_rate_ = 0;
   float seconds_per_sample_ = 0;
+
+  // Counters to synchronize volume, frequency, and length checks across tracks.
+  unsigned volume_check_interval_ = 0;
+  unsigned volume_check_counter_ = 0;
+  unsigned frequency_check_interval_ = 0;
+  unsigned frequency_check_counter_ = 0;
+  unsigned length_check_interval_ = 0;
+  unsigned length_check_counter_ = 0;
 
   SDL_AudioDeviceID device_;
 };

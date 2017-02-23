@@ -11,8 +11,7 @@
 namespace dgb {
 
 void AudioTrack::SetLength(float length) {
-  track_length_ = length * sample_rate_;
-  sample_count_ = 0;
+  track_length_counter_ = length * kLengthCheckRate;
 }
 
 void AudioTrack::SetSquare(int frequency, float duty) {
@@ -29,7 +28,7 @@ void AudioTrack::SetSquare(int frequency, float duty) {
 
 void AudioTrack::SetFrequencySweep(int sweep_step, float sweep_interval) {
   frequency_sweep_step_ = sweep_step;
-  frequency_sweep_interval_ = sample_rate_ * std::abs(sweep_interval);
+  frequency_sweep_interval_ = kFrequencyCheckRate * std::abs(sweep_interval);
   frequency_sweep_counter_ = frequency_sweep_interval_;
 }
 
@@ -42,19 +41,16 @@ void AudioTrack::SetVolumeAndSweep(float volume, float sweep_interval) {
   // TODO: bounds check
   volume_ = volume * kVolumeMax;
   volume_sweep_direction_ = (sweep_interval >= 0.0) ? 1 : -1;
-  volume_sweep_interval_ = sample_rate_ * std::abs(sweep_interval);
+  volume_sweep_interval_ = kVolumeCheckRate * std::abs(sweep_interval);
   volume_sweep_counter_ = volume_sweep_interval_;
   do_volume_sweep_ = true;
 }
 
 int16_t AudioTrack::Sample(float t) {
-  if (sample_count_ > track_length_ || frequency_ <= 0 || volume_ <= 0)
+  if (track_length_counter_ <= 0 || frequency_ <= 0 || volume_ <= 0) {
     return 0;
-  int16_t sample = SampleSquare(t);
-  if (do_volume_sweep_) DoVolumeSweep();
-  DoFrequencySweep();
-  ++sample_count_;
-  return sample;
+  }
+  return SampleSquare(t);
 }
 
 int16_t AudioTrack::SampleSine(float t) {
@@ -67,8 +63,9 @@ int16_t AudioTrack::SampleSquare(float t) {
           > square_duty_) ? 1 : -1);
 }
 
-void AudioTrack::DoVolumeSweep() {
-  // TODO: should this be a smooth sweep instead?
+void AudioTrack::DoVolumeCheck() {
+  if (!do_volume_sweep_) return;
+
   --volume_sweep_counter_;
   if (volume_sweep_counter_ <= 0) {
     volume_ += kVolumeSweepStep * volume_sweep_direction_;
@@ -80,8 +77,7 @@ void AudioTrack::DoVolumeSweep() {
   }
 }
 
-void AudioTrack::DoFrequencySweep() {
-  // TODO: should this be a smooth sweep instead?
+void AudioTrack::DoFrequencyCheck() {
   --frequency_sweep_counter_;
   if (frequency_sweep_counter_ <= 0) {
     frequency_ += frequency_ / std::pow(2.0, frequency_sweep_step_);
@@ -94,12 +90,19 @@ void AudioTrack::DoFrequencySweep() {
   }
 }
 
+void AudioTrack::DoLengthCheck() {
+  --track_length_counter_;
+  if (track_length_counter_ <= 0) {
+    volume_ = 0;
+  }
+}
+
 
 int16_t AudioEngine::Sample(float t) {
   int16_t sample = 0;
   for (std::shared_ptr<AudioTrack> &track : tracks_) {
     sample += track->Sample(t);
-    // TODO: clamp
+    // TODO: clamp / limit
   }
   return sample;
 }
@@ -114,6 +117,8 @@ void AudioEngine::AudioCallback(
   for(int i = 0; i < length; i++) { 
     t = static_cast<float>(that->audio_pos_) * that->seconds_per_sample_;
     buf[i] = that->Sample(t);
+
+    that->DoChecks();
 
     ++that->audio_pos_;
   }
@@ -139,8 +144,54 @@ void AudioEngine::Init() {
 
   sample_rate_ = got_spec.freq;
   seconds_per_sample_ = 1.0 / got_spec.freq;
+
+  // Set up volume sweep checks to happen at 64 Hz.
+  volume_check_interval_ = got_spec.freq / kVolumeCheckRate;
+  volume_check_counter_ = volume_check_interval_;
+  // Set up frequency sweep checks to happen at 128 Hz.
+  frequency_check_interval_ = got_spec.freq / kFrequencyCheckRate;
+  frequency_check_counter_ = frequency_check_interval_;
+  // Set up length checks to happen at 256 Hz.
+  length_check_interval_ = got_spec.freq / kLengthCheckRate;
+  length_check_counter_ = length_check_interval_;
   
   SDL_PauseAudioDevice(device_, 0);  // Unpause the device (paused by default).
+}
+
+void AudioEngine::DoChecks() {
+  --volume_check_counter_;
+  if (volume_check_counter_ == 0) {
+    volume_check_counter_ = volume_check_interval_;
+    DoVolumeChecks();
+  }
+  --frequency_check_counter_;
+  if (frequency_check_counter_ == 0) {
+    frequency_check_counter_ = frequency_check_interval_;
+    DoFrequencyChecks();
+  }
+  --length_check_counter_;
+  if (length_check_counter_ == 0) {
+    length_check_counter_ = length_check_interval_;
+    DoLengthChecks();
+  }
+}
+
+void AudioEngine::DoVolumeChecks() {
+  for (std::shared_ptr<AudioTrack> &track : tracks_) {
+    track->DoVolumeCheck();
+  }
+}
+
+void AudioEngine::DoFrequencyChecks() {
+  for (std::shared_ptr<AudioTrack> &track : tracks_) {
+    track->DoFrequencyCheck();
+  }
+}
+
+void AudioEngine::DoLengthChecks() {
+  for (std::shared_ptr<AudioTrack> &track : tracks_) {
+    track->DoLengthCheck();
+  }
 }
 
 }  // namespace dgb
