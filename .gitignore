@@ -1,9 +1,13 @@
-*.DS_Store
 minnow
 minnow_test
+
+*.DS_Store
 *.gb
 *.sav
 *.bak
-obj/
 *.swp
 *.bin
+
+.vscode/
+obj/
+
