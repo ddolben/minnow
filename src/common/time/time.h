@@ -10,7 +10,11 @@ namespace {
 // nop instruction, but will instruct the assembler to make spin waits more
 // efficient.
 inline void Pause() {
-  asm("pause;");
+  #ifdef __aarch64__
+    asm("yield;");
+  #else
+    asm("pause;");
+  #endif
 }
 
 }  // namespace
