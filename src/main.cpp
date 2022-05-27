@@ -53,6 +53,8 @@ Flag<bool> FLAG_debug_windows("debug_windows", false);
 // Throttle the CPU to run at native speed. Set to false to run as fast as
 // possible.
 Flag<bool> FLAG_throttle_cpu("throttle_cpu", true);
+// If true, starts the emulator in debug mode
+Flag<bool> FLAG_start_debug("start_debug", false);
 
 void ProcessArgs(int *argc, char **argv[]) {
   ParseFlags(argc, argv);
@@ -123,6 +125,9 @@ int main(int argc, char *argv[]) {
     } else {
       ERRORF("Bad breakpoint opcode value: 0x%04x", opcode);
     }
+  }
+  if (*FLAG_start_debug) {
+    cpu.set_debug(true);
   }
 
   cartridge->PrintCartridgeDebug();
