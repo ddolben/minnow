@@ -557,6 +557,8 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
         } else {
           breakpoint_read_max_ = breakpoint_read_min_;
         }
+        printf("Set breakpoint on memory read range %#04x - %#04x\n",
+            breakpoint_read_min_, breakpoint_read_max_);
       } else if (std::string("break op").compare(line.substr(0, 8)) == 0) {
         breakpoint_opcode_ = stoi(line.substr(9), 0, 16);
       } else if (std::string("break prev").compare(line) == 0) {
@@ -943,6 +945,10 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
       break;
     }
   case 0xcd: CallA16(true, memory); break;
+  case 0xce:
+    AddCarry8(a_, Read8(pc_, memory));
+    pc_++;
+    break;
   case 0xd0:
     if ((*f_ & CARRY_FLAG) == 0) {
       Return(memory);
