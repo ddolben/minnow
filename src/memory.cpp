@@ -239,4 +239,53 @@ void Memory::StartDMATransfer(uint8_t value) {
   }
 }
 
+////////// MockMemoryBus
+
+uint8_t MockMemoryBus::Read8(uint16_t offset) {
+  if (expected_ops_.empty()) {
+    FATALF("Unexpected Read8(0x%x)", offset);
+  }
+  ExpectedOp op = expected_ops_.front();
+  expected_ops_.pop_front();
+  if (op.is_write) {
+    FATALF("Unexpected Write8(0x%x), wanted Read8", offset);
+  }
+  if (op.offset != offset) {
+    FATALF("Read8 at unexpected offset: want: 0x%x, got: 0x%x", op.offset, offset);
+  }
+  return op.value;
+}
+
+void MockMemoryBus::Write8(uint16_t offset, uint8_t value) {
+  if (expected_ops_.empty()) {
+    FATALF("Unexpected Write8(0x%x, 0x%x)", offset, value);
+  }
+  ExpectedOp op = expected_ops_.front();
+  expected_ops_.pop_front();
+  if (!op.is_write) {
+    FATALF("Unexpected Read8(0x%x), wanted Write8", offset);
+  }
+  if (op.offset != offset) {
+    FATALF("Write at unexpected offset: want: 0x%x, got: 0x%x", op.offset, offset);
+  }
+  if (op.value != value) {
+    FATALF("Write8(0x%x) of unexpected value: want: 0x%x, got: 0x%x", offset, op.value, value);
+  }
+}
+
+void MockMemoryBus::ExpectRead(uint16_t offset, uint8_t return_value) {
+  ExpectedOp op;
+  op.offset = offset;
+  op.value = return_value;
+  expected_ops_.push_back(op);
+}
+
+void MockMemoryBus::ExpectWrite(uint16_t offset, uint8_t value) {
+  ExpectedOp op;
+  op.is_write = true;
+  op.offset = offset;
+  op.value = value;
+  expected_ops_.push_back(op);
+}
+
 }  // namespace dgb

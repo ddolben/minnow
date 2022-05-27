@@ -59,7 +59,6 @@ class CPU {
   void set_debug(bool value) { debug_.store(value); }
   bool debug() { return debug_.load(); }
 
- private:
   enum FlagsMask {
     ZERO_FLAG = 0x80,
     SUBTRACT_FLAG = 0x40,
@@ -67,6 +66,7 @@ class CPU {
     CARRY_FLAG = 0x10
   };
 
+ protected:
   // Op helpers.
   // TODO: make these all self-contained (not dependent on instance variables)
   // so they're easier to test.
@@ -172,6 +172,16 @@ class CPU {
 
   std::shared_ptr<Clock> clock_;
   std::shared_ptr<Interrupts> interrupts_;
+};
+
+class TestCPU : public CPU {
+ public:
+  using CPU::CPU;
+  // Register accessor methods
+  uint8_t get_a() { return *a_; }
+  uint8_t get_b() { return *b_; }
+  void    set_b(uint8_t val) { *b_ = val; }
+  uint8_t get_f() { return *f_; }
 };
 
 }  // namespace dgb

@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <deque>
 #include <map>
 #include <memory>
 #include <string>
@@ -36,6 +37,7 @@ namespace dgb {
 //
 class Memory {
  public:
+  Memory() {}
   Memory(std::shared_ptr<Cartridge> cartridge, std::shared_ptr<Display> display,
       std::shared_ptr<Input> input, std::shared_ptr<Timers> timers,
       std::shared_ptr<SoundController> sound_controller)
@@ -44,8 +46,8 @@ class Memory {
 
   void LoadBootloader(const std::string &filename);
 
-  uint8_t Read8(uint16_t offset);
-  void Write8(uint16_t offset, uint8_t value);
+  virtual uint8_t Read8(uint16_t offset);
+  virtual void Write8(uint16_t offset, uint8_t value);
 
   bool bootstrap_is_mapped() { return bootstrap_is_mapped_; }
 
@@ -86,6 +88,25 @@ class Memory {
   std::shared_ptr<Input> input_;
   std::shared_ptr<Timers> timers_;
   std::shared_ptr<SoundController> sound_controller_;
+};
+
+class MockMemoryBus : public Memory {
+ public:
+  MockMemoryBus() {}
+
+  uint8_t Read8(uint16_t offset) override;
+  void Write8(uint16_t offset, uint8_t value) override;
+
+  void ExpectRead(uint16_t offset, uint8_t return_value);
+  void ExpectWrite(uint16_t offset, uint8_t value);
+
+ private:
+  struct ExpectedOp {
+    bool is_write = false;
+    uint16_t offset = 0;
+    uint8_t value = 0;
+  };
+  std::deque<ExpectedOp> expected_ops_;
 };
 
 }  // namespace dgb
