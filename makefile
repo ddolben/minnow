@@ -27,6 +27,10 @@ all: $(EXE)
 
 tests: $(TEST_EXE)
 
+.PHONY: test
+test: tests
+	./minnow_test
+
 # Build the executable.
 $(EXE): $(MAIN_OBJS) $(OBJS) $(HDRS) $(INLINES)
 	$(CXX) $(CXX_FLAGS) $(LD_FLAGS) -o $@ $(MAIN_OBJS) $(OBJS)
