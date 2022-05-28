@@ -34,6 +34,8 @@ class CPU {
   bool ProcessInterrupts(Memory *memory);
 
   void PrintRegisters();
+  void PrintExecutionFrame(int num_instructions, Memory *memory);
+
   bool RunOp(Memory *memory, int *cycle_count);
   bool RunPrefix(uint8_t code, Memory *memory);
 
@@ -134,6 +136,8 @@ class CPU {
   // Memory read address at which to break (actually uint16).
   int32_t breakpoint_read_min_ = -1;
   int32_t breakpoint_read_max_ = -1;
+  // If true, prints the execution frame on every debug step.
+  bool watch_frame_ = false;
 
   uint16_t previous_pc_ = 0;
   std::string previous_debug_command_;

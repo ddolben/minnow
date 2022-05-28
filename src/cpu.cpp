@@ -474,12 +474,36 @@ std::string OpToString(const OpInstance &oi) {
 }  // namespace
 
 void CPU::PrintRegisters() {
-  DEBUGF("  PC: 0x%04x", 0xffff & pc_);
-  DEBUGF("  SP: 0x%04x", 0xffff & sp_);
-  DEBUGF("  AF: 0x%04x", 0xffff & af_);
-  DEBUGF("  BC: 0x%04x", 0xffff & bc_);
-  DEBUGF("  DE: 0x%04x", 0xffff & de_);
-  DEBUGF("  HL: 0x%04x", 0xffff & hl_);
+  printf("  PC: 0x%04x\n", 0xffff & pc_);
+  printf("  SP: 0x%04x\n", 0xffff & sp_);
+  printf("  AF: 0x%04x\n", 0xffff & af_);
+  printf("  BC: 0x%04x\n", 0xffff & bc_);
+  printf("  DE: 0x%04x\n", 0xffff & de_);
+  printf("  HL: 0x%04x\n", 0xffff & hl_);
+}
+
+void CPU::PrintExecutionFrame(int num_instructions, Memory *memory) {
+  uint16_t debug_pc = pc_;
+  for (int i = 0; i < num_instructions; ++i) {
+    uint8_t code = Read8(debug_pc, memory);
+    OpInstance oi = {};
+    oi.op = ops[code];
+    oi.data[0] = Read8(debug_pc+1, memory);
+    oi.data[1] = Read8(debug_pc+2, memory);
+    if (debug_pc == pc_) {
+      printf("=> ");
+    } else {
+      printf("   ");
+    }
+    printf("[0x%04x]: %s\n", debug_pc & 0xffff, OpToString(oi).c_str());
+
+    // Watch for integer rollover.
+    uint16_t previous_debug_pc = debug_pc;
+    debug_pc += oi.op.length;
+    if (debug_pc < previous_debug_pc) {
+      break;
+    }
+  }
 }
 
 bool CPU::RunOp(Memory *memory, int *cycle_count) {
@@ -496,14 +520,8 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
 
   if (debug()) {
     PrintRegisters();
-    DEBUGF("Previous PC: 0x%04x", previous_pc_);
-
-
-    OpInstance oi = {};
-    oi.op = ops[code];
-    oi.data[0] = Read8(pc_+1, memory);
-    oi.data[1] = Read8(pc_+2, memory);
-    DEBUGF("[0x%04x]: %s", pc_ & 0xffff, OpToString(oi).c_str());
+    printf("Previous PC: 0x%04x\n", previous_pc_);
+    PrintExecutionFrame(watch_frame_ ? 10 : 1, memory);
 
     // TODO: formalize this as a debugger
     std::string line;
@@ -542,6 +560,17 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
         } else {
           uint8_t val = Read8(addr, memory);
           printf("[0x%04x]: 0x%02x\n", addr & 0xffff, val & 0xff);
+        }
+      } else if (std::string("frame").compare(line.substr(0, 5)) == 0) {
+        printf("\n");
+        PrintExecutionFrame(10, memory);
+        printf("\n");
+      } else if (std::string("watch frame").compare(line.substr(0, 11)) == 0) {
+        watch_frame_ = !watch_frame_;
+        if (watch_frame_) {
+          printf("Watch frame enabled\n");
+        } else {
+          printf("Watch frame disabled\n");
         }
       } else if (std::string("break write ").compare(line.substr(0, 12)) == 0) {
         breakpoint_write_min_ = stoi(splits[2], 0, 16);
