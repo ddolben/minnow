@@ -138,7 +138,7 @@ class MBC1 : public MemoryBankController {
   }
 
  private:
-  int rom_bank_ = 0;
+  int rom_bank_ = 1;
 };
 
 class MBC3 : public MemoryBankController {
