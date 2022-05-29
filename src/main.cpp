@@ -109,6 +109,7 @@ int main(int argc, char *argv[]) {
 
   if ((*FLAG_bootloader).empty()) {
     cpu.set_pc(0x100);
+    cpu.InitRegisters();
   } else {
     memory.LoadBootloader(*FLAG_bootloader);
   }

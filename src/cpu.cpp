@@ -18,6 +18,14 @@ CPU::CPU(std::shared_ptr<Clock> clock, std::shared_ptr<Interrupts> interrupts)
   });
 }
 
+void CPU::InitRegisters() {
+  af_ = 0x1180;
+  bc_ = 0x0000;
+  de_ = 0xff56;
+  hl_ = 0x000d;
+  sp_ = 0xfffe;
+}
+
 void CPU::StartLoop(Memory *memory) {
   thread_ = std::thread([this, memory]{
     this->Loop(memory);

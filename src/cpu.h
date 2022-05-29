@@ -43,6 +43,8 @@ class CPU {
   void Kill() { is_running_.store(false); }
   bool IsRunning() { return is_running_.load(); }
 
+  // Initializes the CPU's registers as if they are at the end of the bootloader.
+  void InitRegisters();
   // Starts the CPU loop in a separate thread.
   // TODO: make memory an injected instance variable
   void StartLoop(Memory *memory);
