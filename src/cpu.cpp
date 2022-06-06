@@ -661,6 +661,10 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     LoadData8(c_, memory);
     break;
   case 0x0f: *a_ = RotateRight(*a_); break;
+  case 0x10:
+    // STOP: don't actually do anything here
+    pc_++;  // for some reason STOP consumes another byte
+    break;
   case 0x11:
     LoadData16(&de_, memory);
     break;
