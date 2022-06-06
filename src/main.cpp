@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -55,6 +56,8 @@ Flag<bool> FLAG_debug_windows("debug_windows", false);
 Flag<bool> FLAG_throttle_cpu("throttle_cpu", true);
 // If true, starts the emulator in debug mode
 Flag<bool> FLAG_start_debug("start_debug", false);
+// If true, writes out the debug output (op-level data) to a file as it runs
+Flag<std::string> FLAG_debug_output("debug_output", "");
 
 void ProcessArgs(int *argc, char **argv[]) {
   ParseFlags(argc, argv);
@@ -129,6 +132,22 @@ int main(int argc, char *argv[]) {
   }
   if (*FLAG_start_debug) {
     cpu.set_debug(true);
+  }
+
+  // Create this out here so it doesn't get destructed until the end of main()
+  std::ofstream debug_out;
+  if (!(*FLAG_debug_output).empty()) {
+    debug_out.open((*FLAG_debug_output).c_str(), std::ios::out);
+    cpu.set_preop_callback([&debug_out](dgb::DebugOp op) {
+      char buf[128];
+      // TODO: can we just use fprintf?
+      std::snprintf(buf, sizeof(buf),
+          "[0x%04x] %s",
+          op.pc,
+          op.debug_string.c_str());
+      
+      debug_out << buf << std::endl;
+    });
   }
 
   cartridge->PrintCartridgeDebug();

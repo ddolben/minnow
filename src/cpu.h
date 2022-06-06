@@ -22,6 +22,19 @@ const uint16_t kInterruptHandlers[5] = {
   0x40, 0x48, 0x50, 0x58, 0x60
 };
 
+struct DebugOp {
+  // Opcode
+  uint8_t code;
+  // Number of bytes of data to consume
+  uint8_t length;
+  // Additional data used by the opcode if length > 1
+  uint8_t data[2];
+  // Debug string explaining the op
+  std::string debug_string;
+  // Program counter
+  uint16_t pc;
+};
+
 class CPU {
  public:
   CPU(std::shared_ptr<Clock> clock, std::shared_ptr<Interrupts> interrupts);
@@ -62,6 +75,8 @@ class CPU {
 
   void set_debug(bool value) { debug_.store(value); }
   bool debug() { return debug_.load(); }
+
+  void set_preop_callback(std::function<void(DebugOp)> f) { preop_callback_ = f; }
 
   enum FlagsMask {
     ZERO_FLAG = 0x80,
@@ -143,6 +158,7 @@ class CPU {
 
   uint16_t previous_pc_ = 0;
   std::string previous_debug_command_;
+  std::function<void(DebugOp)> preop_callback_;
 
   // Program counter.
   uint16_t pc_ = 0x0;

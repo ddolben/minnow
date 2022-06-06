@@ -612,6 +612,21 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     }
   }
 
+  if (preop_callback_) {
+    DebugOp debug_op;
+    debug_op.code = code;
+    debug_op.length = ops[code].length;
+    debug_op.data[0] = Read8(pc_+1, memory);
+    debug_op.data[1] = Read8(pc_+2, memory);
+    OpInstance op_instance;
+    op_instance.op = ops[code];
+    op_instance.data[0] = debug_op.data[0];
+    op_instance.data[1] = debug_op.data[1];
+    debug_op.debug_string = OpToString(op_instance);
+    debug_op.pc = pc_;
+    preop_callback_(debug_op);
+  }
+
   previous_pc_ = pc_;
   pc_++;
 
