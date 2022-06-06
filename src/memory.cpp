@@ -133,6 +133,11 @@ uint8_t Memory::ReadFromDevice(uint16_t offset) {
   if (offset == 0xff4a) { return display_->WindowY(); }
   if (offset == 0xff4b) { return display_->WindowX(); }
 
+  if (offset == 0xff4d) {
+    INFOF("(CGB only) read from CGB speed switch register 0x%04x", offset & 0xffff);
+    return 0x00;
+  }
+
   if (offset == 0xffff) { return interrupt_enable_; }
 
   FATALF("NOT IMPLEMENTED: read from device 0x%04x", offset & 0xffff);
@@ -208,6 +213,12 @@ void Memory::WriteToDevice(uint16_t offset, uint8_t value) {
           offset & 0xffff, ByteBits(value).c_str());
     }
     return;
+  }
+  if (offset == 0xff4d) {
+    // CGB speed switch register - actual functionality is only relevant for GBColor, so we'll just
+    // do nothing.
+    INFOF("(not implemented) write to CGB speed switch register (0x%04x) <- %s",
+        offset & 0xffff, ByteBits(value).c_str());
   }
   if (offset == 0xff50 && value == 1) {  // Unmap the boot rom.
     bootstrap_is_mapped_ = false;
