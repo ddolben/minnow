@@ -111,6 +111,7 @@ void Memory::Write(uint16_t offset, uint8_t *value, int length) {
 uint8_t Memory::ReadFromDevice(uint16_t offset) {
   if (offset == 0xff00) { return input_->Joypad(); }
   if (offset == 0xff04) { return timers_->Divider(); }
+  if (offset == 0xff05) { return timers_->get_counter(); }
   if (offset == 0xff07) { return timers_->control(); }
   if (offset == 0xff0f) { return interrupt_flag_; }
 
@@ -156,6 +157,10 @@ void Memory::WriteToDevice(uint16_t offset, uint8_t value) {
   if (offset == 0xff02) {  // Serial Transfer Control register.
     //WARNINGF("NOT IMPLEMENTED: write to Serial Transfer Control register "
     //    "(0xff02) <- 0x%02x", value);
+    return;
+  }
+  if (offset == 0xff05) {  // Timer counter register
+    timers_->set_counter(value);
     return;
   }
   if (offset == 0xff06) {  // Timer Modulo register.

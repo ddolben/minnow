@@ -40,14 +40,17 @@ class Timers {
 
   void set_modulo(uint8_t value) { modulo_ = value; }
 
+  uint8_t get_counter() { return counter_; }
+  void set_counter(uint8_t value) { counter_ = value; }
+
   uint8_t control() { return control_; }
   void set_control(uint8_t value) {
     control_ = value;
     switch (control_ & 0x3) {
-      case 0x3: resolution_ = kClockSpeed / 16384;
-      case 0x2: resolution_ = kClockSpeed / 262144;
-      case 0x1: resolution_ = kClockSpeed / 65536;
-      default: resolution_ = kClockSpeed / 4096;
+      case 0x3: resolution_ = kClockSpeed / 16384; break;
+      case 0x2: resolution_ = kClockSpeed / 65536; break;
+      case 0x1: resolution_ = kClockSpeed / 262144; break;
+      default: resolution_ = kClockSpeed / 4096; break;
     }
   }
 
