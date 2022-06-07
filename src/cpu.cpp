@@ -247,19 +247,21 @@ inline void CPU::DecimalAdjust(uint8_t *dest) {
   bool new_carry = false;
 
   if ((*f_ & SUBTRACT_FLAG) == 0) {  // Addition
-    if ((*dest & 0xf) > 0x9 || ((*f_ & HALF_CARRY_FLAG) != 0)) {
-      *dest += 6;
-    }
-    if ((*dest & 0xf0) > 0x90 || ((*f_ & CARRY_FLAG) != 0)) {
+    // Adjust the upper nibble first so any overflow from the lower nibble doesn't interfere.
+    if (*dest > 0x99 || ((*f_ & CARRY_FLAG) != 0)) {
       *dest += 0x60;
       new_carry = true;
     }
-  } else {  // Subtraction
     if ((*dest & 0xf) > 0x9 || ((*f_ & HALF_CARRY_FLAG) != 0)) {
-      *dest -= 0x6;
+      *dest += 6;
     }
-    if ((*dest & 0xf0) > 0x90 || ((*f_ & CARRY_FLAG) != 0)) {
+  } else {  // Subtraction
+    // Adjust the upper nibble first so any overflow from the lower nibble doesn't interfere.
+    if ((*f_ & CARRY_FLAG) != 0) {
       *dest -= 0x60;
+    }
+    if ((*f_ & HALF_CARRY_FLAG) != 0) {
+      *dest -= 0x6;
     }
 
     // In subtraction, carry flag stays the same.
@@ -656,6 +658,15 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   case 0x07:
     *a_ = RotateLeft(*a_);
     break;
+  case 0x08:  // LD (a16),SP
+    {
+      // Load address from memory
+      uint16_t address = 0;
+      LoadData16(&address, memory);  // advances program counter
+      // Write contents of SP register to address
+      Write16(address, sp_, memory);
+    }
+    break;
   case 0x09:
     Add16(&hl_, bc_);
     break;
@@ -786,6 +797,7 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
       if (do_jump) *cycle_count = ops[code].long_cycle_count;
       break;
     }
+  case 0x39: Add16(&hl_, sp_); break;
   case 0x3a:
     *a_ = Read8(hl_, memory);
     hl_--;
@@ -1095,6 +1107,23 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
       And(value);
     }
     break;
+  case 0xe8:
+    {
+      // Interpret the byte as signed.
+      int8_t value = static_cast<int8_t>(Read8(pc_, memory));
+      pc_++;
+      // TODO: merge with 0xf8
+      *f_ = 0x0;  // Reset flags
+      if (value > 0) {
+        if ((value & 0xf) > (0xf - (sp_ & 0xf))) *f_ |= HALF_CARRY_FLAG;
+        if (value > (0xff - (sp_ & 0xff))) *f_ |= CARRY_FLAG;
+      } else if (value < 0) {
+        if ((sp_ & 0xf) < ((-value) & 0xf)) *f_ |= HALF_CARRY_FLAG;
+        if ((sp_ & 0xff) < (-value)) *f_ |= CARRY_FLAG;
+      }
+      sp_ += value;
+    }
+    break;
   case 0xe9:
     pc_ = hl_;
     break;
@@ -1122,6 +1151,8 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     break;
   case 0xf1:
     Pop(&af_, memory);
+    // Zero out the low 4 bits of the flag register, since they are always unused and always 0.
+    af_ &= 0xfff0;
     break;
   case 0xf2: *a_ = Read8(0xff00 + (*c_), memory); break;
   case 0xf3:
@@ -1135,8 +1166,21 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
     pc_++;
     break;
   case 0xf8:
-    hl_ = sp_ + Read8(pc_, memory);
-    pc_++;
+    {
+      // Interpret the byte as signed.
+      int8_t value = static_cast<int8_t>(Read8(pc_, memory));
+      pc_++;
+      // TODO: merge with 0xe8
+      *f_ = 0x0;  // Reset flags
+      if (value > 0) {
+        if ((value & 0xf) > (0xf - (sp_ & 0xf))) *f_ |= HALF_CARRY_FLAG;
+        if (value > (0xff - (sp_ & 0xff))) *f_ |= CARRY_FLAG;
+      } else if (value < 0) {
+        if ((sp_ & 0xf) < ((-value) & 0xf)) *f_ |= HALF_CARRY_FLAG;
+        if ((sp_ & 0xff) < (-value)) *f_ |= CARRY_FLAG;
+      }
+      hl_ = sp_ + value;
+    }
     break;
   case 0xf9: sp_ = hl_; break;
   case 0xfa:

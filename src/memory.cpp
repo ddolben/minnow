@@ -299,4 +299,21 @@ void MockMemoryBus::ExpectWrite(uint16_t offset, uint8_t value) {
   expected_ops_.push_back(op);
 }
 
+int MockMemoryBus::RemainingExpectations() {
+  if (expected_ops_.empty()) {
+    return 0;
+  }
+
+  for (size_t i = 0; i < expected_ops_.size(); i++) {
+    ExpectedOp op = expected_ops_[i];
+    if (op.is_write) {
+      ERRORF("missing expected memory operation: write(0x%04x, 0x%02x)", op.offset, op.value);
+    } else {
+      ERRORF("missing expected memory operation: read(0x%04x)", op.offset);
+    }
+  }
+
+  return expected_ops_.size();
+}
+
 }  // namespace dgb

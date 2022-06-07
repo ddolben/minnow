@@ -203,10 +203,14 @@ class TestCPU : public CPU {
  public:
   using CPU::CPU;
   // Register accessor methods
-  uint8_t get_a() { return *a_; }
-  uint8_t get_b() { return *b_; }
-  void    set_b(uint8_t val) { *b_ = val; }
-  uint8_t get_f() { return *f_; }
+  uint8_t  get_a() { return *a_; }
+  uint8_t  get_b() { return *b_; }
+  void     set_b(uint8_t val) { *b_ = val; }
+  uint8_t  get_f() { return *f_; }
+  uint16_t get_hl() { return hl_; }
+  void     set_hl(uint16_t val) { hl_ = val; }
+  uint16_t get_sp() { return sp_; }
+  void     set_sp(uint16_t val) { sp_ = val; }
 };
 
 }  // namespace dgb

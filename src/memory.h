@@ -100,6 +100,9 @@ class MockMemoryBus : public Memory {
   void ExpectRead(uint16_t offset, uint8_t return_value);
   void ExpectWrite(uint16_t offset, uint8_t value);
 
+  // Returns the number of remaining expectations, and writes out data about any unexecuted ones.
+  int RemainingExpectations();
+
  private:
   struct ExpectedOp {
     bool is_write = false;
