@@ -144,6 +144,9 @@ class CPU {
   bool halted_ = false;
   // Memory address at which to break.
   int64_t breakpoint_ = -1;
+  // Another temporary breakpoint, used for running only up to a new point in memory (e.g. for the
+  // 'next' debug operation).
+  int64_t temp_breakpoint_ = -1;
   // Opcode at which to break (it's actually just a uint8, but expanding to
   // 16-bit signed allows for negative numbers to disable it).
   int16_t breakpoint_opcode_ = -1;

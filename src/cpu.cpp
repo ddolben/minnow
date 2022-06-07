@@ -525,6 +525,10 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
   if (pc_ == breakpoint_ || code == breakpoint_opcode_) {
     set_debug(true);
   }
+  if (pc_ == temp_breakpoint_) {
+    set_debug(true);
+    temp_breakpoint_ = -1;  // reset this
+  }
 
   if (debug()) {
     PrintRegisters();
@@ -605,6 +609,10 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
       } else if (std::string("break").compare(line.substr(0, 5)) == 0) {
         breakpoint_ = stoi(line.substr(6), 0, 16);
       } else if (std::string("step").compare(line.substr(0, 4)) == 0) {
+        break;
+      } else if (std::string("next").compare(line.substr(0, 4)) == 0) {
+        temp_breakpoint_ = pc_ + ops[code].length;
+        set_debug(false);
         break;
       } else if (std::string("quit").compare(line.substr(0, 4)) == 0) {
         exit(0);
