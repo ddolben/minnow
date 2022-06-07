@@ -244,6 +244,27 @@ inline void CPU::SubCarry8(uint8_t *dest, uint8_t value) {
 }
 
 inline void CPU::DecimalAdjust(uint8_t *dest) {
+  // Had a few questions around this implementation, learned some stuff from here:
+  //   https://forums.nesdev.org/viewtopic.php?t=15944
+  //
+  // Copy-paste:
+  // Do you understand what BCD (binary-coded decimal) arithmetic means? Basically, it means
+  // interpreting the upper and lower nybbles (a nybble is 4 bits or 1 hex digit) of a byte as two
+  // individual decimal digits, rather than the whole byte as one binary number. There are a few
+  // different ways to do BCD arithmetic, and every CPU with BCD support (even CPUs in the same
+  // family, like the GameBoy CPU and Z80) tends to do them a bit differently. The CPU-specific
+  // implementation details matter when you try to do BCD arithmetic on operands that aren't valid
+  // BCD numbers (i.e. the upper and/or lower nybble of one or both operands was greater than 0x9)
+  //
+  // The DAA instruction adjusts the results of a binary addition or subtraction (as stored in the
+  // accumulator and flags) to retroactively turn it into a BCD addition or subtraction. It does so
+  // by adding or subtracting 6 from the result's upper nybble, lower nybble, or both. In order to
+  // work it has to know whether the last operation was an addition or a subtraction (the n flag),
+  // and whether a carry and/or a half-carry occurred (the c and h flags). Incidentally, the DAA
+  // instruction is the only thing that the n and h flags are normally ever used by, unless a
+  // program pushes the flags onto the stack and pops them into another register to explicitly
+  // inspect them.
+
   bool new_carry = false;
 
   if ((*f_ & SUBTRACT_FLAG) == 0) {  // Addition
