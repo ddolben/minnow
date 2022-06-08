@@ -26,6 +26,8 @@ CPU::CPU(std::shared_ptr<Clock> clock, std::shared_ptr<Interrupts> interrupts)
     : clock_(clock), interrupts_(interrupts) {
   interrupts_->RegisterInterruptHandler([this](uint8_t type) {
     interrupt_request_ |= type;
+    // Any interrupt that happens resumes from HALT state.
+    halted_ = false;
   });
 }
 
@@ -659,8 +661,8 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
           std::string("n").compare(line) == 0) {
         if (kCallCodes.count(code) > 0) {
           // Step over the next instruction if it's a call.
-        temp_breakpoint_ = pc_ + ops[code].length;
-        set_debug(false);
+          temp_breakpoint_ = pc_ + ops[code].length;
+          set_debug(false);
         }
         break;
       } else if (std::string("quit").compare(line.substr(0, 4)) == 0) {
