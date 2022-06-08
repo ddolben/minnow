@@ -6,7 +6,17 @@ EXE := minnow
 TEST_EXE := minnow_test
 
 LIB_INCLUDES := -I/usr/include -I/usr/local/include
-LIBS := -lSDL2
+LIBS := 
+
+# Temporarily hardcode SDL as framework for mac
+# TODO: check if MacOS and if so set to true
+USE_SDL_FRAMEWORK := true
+ifeq ($(USE_SDL_FRAMEWORK),true)
+  LIB_INCLUDES += -F/Library/Frameworks -framework SDL2
+else  # use SDL library
+	LIBS += -lSDL2
+endif
+
 CXX_FLAGS := -Wall --std=c++0x -g -I$(SRC_DIR) $(LIB_INCLUDES)
 LD_FLAGS := $(LIBS)
 
