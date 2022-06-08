@@ -4,12 +4,23 @@
 #include <cstring>
 #include <functional>
 #include <iostream>
+#include <set>
 
 #include "common/logging.h"
 #include "common/string/string.h"
 #include "memory.h"
 
 namespace dgb {
+
+namespace {
+const std::set<uint8_t> kCallCodes{
+  0xc4,  // CALL nz,a16
+  0xcc,  // CALL z,a16
+  0xcd,  // CALL a16
+  0xd4,  // CALL nc,a16
+  0xdc,  // CALL c,a16
+};
+}  // namespace
 
 CPU::CPU(std::shared_ptr<Clock> clock, std::shared_ptr<Interrupts> interrupts)
     : clock_(clock), interrupts_(interrupts) {
@@ -572,7 +583,8 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
 
       std::vector<std::string> splits = StringSplit(line, ' ');
 
-      if (std::string("continue").compare(line.substr(0, 8)) == 0) {
+      if (std::string("continue").compare(line) == 0 ||
+          std::string("c").compare(line) == 0) {
         set_debug(false);
         break;
       }
@@ -625,17 +637,31 @@ bool CPU::RunOp(Memory *memory, int *cycle_count) {
             breakpoint_read_min_, breakpoint_read_max_);
       } else if (std::string("break op").compare(line.substr(0, 8)) == 0) {
         breakpoint_opcode_ = stoi(line.substr(9), 0, 16);
+        printf("Set breakpoint on opcode %#02x (%s)\n",
+            breakpoint_opcode_, ops[breakpoint_opcode_].debug.c_str());
       } else if (std::string("break prev").compare(line) == 0) {
         breakpoint_ = previous_pc_;
         set_debug(false);
         break;
       } else if (std::string("break").compare(line.substr(0, 5)) == 0) {
         breakpoint_ = stoi(line.substr(6), 0, 16);
-      } else if (std::string("step").compare(line.substr(0, 4)) == 0) {
+        printf("Set breakpoint at program address %#04x\n", breakpoint_);
+      } else if (std::string("b ").compare(line.substr(0, 2)) == 0) {
+        breakpoint_ = stoi(line.substr(2), 0, 16);
+        printf("Set breakpoint at program address %#04x\n", breakpoint_);
+      } else if (
+          std::string("step").compare(line) == 0 ||
+          std::string("s").compare(line) == 0) {
+        // Step to the next instruction, stepping into CALLs
         break;
-      } else if (std::string("next").compare(line.substr(0, 4)) == 0) {
+      } else if (
+          std::string("next").compare(line) == 0 ||
+          std::string("n").compare(line) == 0) {
+        if (kCallCodes.count(code) > 0) {
+          // Step over the next instruction if it's a call.
         temp_breakpoint_ = pc_ + ops[code].length;
         set_debug(false);
+        }
         break;
       } else if (std::string("quit").compare(line.substr(0, 4)) == 0) {
         exit(0);
